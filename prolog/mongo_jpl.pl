@@ -12,7 +12,7 @@ tests_mongo :-
 	
 get_models_links :-
 	jpl_new( 'mongojpl.MongoJpl', [], DB),
-	jpl_call(DB, getModels, [19, 327000000], Models),
+	jpl_call(DB, getModels, [], Models),
 	write(Models).
 	
 
