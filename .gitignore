@@ -1,3 +1,7 @@
 *~
 .project
-bin/
+.classpath
+bin
+msg_gen
+srv_gen
+build

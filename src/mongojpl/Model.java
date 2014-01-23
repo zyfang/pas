@@ -5,6 +5,9 @@ import java.util.List;
 
 public class Model extends Entity{
 	
+	private List<Link> links;	
+	private List<Contact> contacts;
+	
 	public Model(String name)
 	{
 		super(name);
@@ -12,9 +15,6 @@ public class Model extends Entity{
 		this.contacts = new ArrayList<Contact>();
 	}
 	
-	private List<Link> links;	
-	private List<Contact> contacts;
-
 	
 	public List<Link> getLinks() {
 		return links;

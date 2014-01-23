@@ -26,7 +26,6 @@ public class MongoPrologInterface {
 	 * Initialize DB client and connect to the mongo database.
 	 * 
 	 */
-	//////////////////////////////////////////////////////////
 	public MongoPrologInterface() {
 		try {
 			mongoClient = new MongoClient( "localhost" , 27017 );
