@@ -1,0 +1,22 @@
+<package>
+  <description brief="mongo_jpl">
+
+     mongo_jpl
+
+  </description>
+  <author>Andrei Haidu</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/mongo_jpl</url>
+  
+  <depend package="rosjava_jni"/>
+  <depend package="jpl"/>
+  <depend package="knowrob_common"/>
+
+  <export>
+    <java classpath="${prefix}/bin:${prefix}/lib/mongo-java-driver-2.11.3.jar:${prefix}/lib/java-json.jar"/>
+  </export>
+  
+</package>
+
+
