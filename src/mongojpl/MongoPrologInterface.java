@@ -150,42 +150,50 @@ public class MongoPrologInterface {
 		return null;
 	}
 
-
+	public String returnAString()
+	{
+		return "hit_hand_mock";
+	}
+	
+	public String returnGivenString(String string)
+	{
+		return string;
+	}
 	
 	//////////////////////////////////////////////////////////
-	public static void main(String[] args) 
-	{				
-		MongoPrologInterface mpi = new MongoPrologInterface();
-
-		//		List<Model> models = new ArrayList<Model>();
-		//		
-		//		mpi.setModels(models);
-		//		
-		//		for(int i = 0; i < models.size(); i++)
-		//		{
-		//			System.out.println(models.get(i).getName());
-		//			List<Link> links = models.get(i).getLinks();
-		//			
-		//			for(int j = 0; j < links.size(); j++)
-		//			{
-		//				System.out.println("\t" + links.get(j).getName());
-		//			}
-		//			
-		//		}
-		
-		String[] model_names = mpi.getModelNames();
-		for(int i = 0; i < model_names.length; i++)
-		{
-			System.out.println(model_names[i]);
-		}
-		
-		String[] link_names = mpi.getLinkNames("hit_2hand");
-		
-		for(int i = 0; i < link_names.length; i++)
-		{
-			System.out.println(link_names[i]);
-		}
-		
-	}
+//	public static void main(String[] args) 
+//	{				
+//		MongoPrologInterface mpi = new MongoPrologInterface();
+//
+//		//		List<Model> models = new ArrayList<Model>();
+//		//		
+//		//		mpi.setModels(models);
+//		//		
+//		//		for(int i = 0; i < models.size(); i++)
+//		//		{
+//		//			System.out.println(models.get(i).getName());
+//		//			List<Link> links = models.get(i).getLinks();
+//		//			
+//		//			for(int j = 0; j < links.size(); j++)
+//		//			{
+//		//				System.out.println("\t" + links.get(j).getName());
+//		//			}
+//		//			
+//		//		}
+//		
+//		String[] model_names = mpi.getModelNames();
+//		for(int i = 0; i < model_names.length; i++)
+//		{
+//			System.out.println(model_names[i]);
+//		}
+//		
+//		String[] link_names = mpi.getLinkNames("hit_hand");
+//		
+//		for(int i = 0; i < link_names.length; i++)
+//		{
+//			System.out.println(link_names[i]);
+//		}
+//		
+//	}
 
 }

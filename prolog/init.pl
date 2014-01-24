@@ -20,3 +20,4 @@
 
 
 :- use_module(library(mongo_jpl)).
+:- use_module(library(demos_jpl)).

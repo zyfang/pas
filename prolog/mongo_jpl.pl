@@ -1,18 +1,28 @@
 :- module(mongo_jpl,
 	[
-		tests_mongo/0,
-		get_models_links/0
+		get_models/0,
+		get_links/1		
 	]).
 	
 :- use_module(library('jpl')).
 
-tests_mongo :-
-	jpl_new( 'mongojpl.MongoJpl', [], db),
-	jpl_call( db, tests, [], _).	
-	
-get_models_links :-
-	jpl_new( 'mongojpl.MongoJpl', [], DB),
-	jpl_call(DB, getModels, [], Models),
-	write(Models).
-	
 
+
+get_models :-
+	jpl_new('mongojpl.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'getModelNames', [], Models),
+	jpl_array_to_list(Models, Model_Arr),
+	write(Model_Arr).
+
+get_links(Model) :-
+	jpl_new('mongojpl.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'getLinkNames', [Model], Links),
+	jpl_array_to_list(Links, Link_Arr),
+	write(Link_Arr).
+
+get_models_and_links :-
+	jpl_new('mongojpl.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'getModelNames', [], Models),
+	jpl_array_to_list(Models, Model_Arr),
+	
+	
