@@ -9,6 +9,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
@@ -20,6 +21,7 @@ public class MongoPrologInterface {
 	private DB db;
 	private DBCollection coll;
 
+	
 	//////////////////////////////////////////////////////////
 	public MongoPrologInterface() {
 		try {
@@ -30,21 +32,23 @@ public class MongoPrologInterface {
 			this.db = mongoClient.getDB("sim_db");
 
 			// get the given collection from the DB
-			this.coll = this.db.getCollection("collection_13417_copy");
+			this.coll = this.db.getCollection("collection_21047_copy");
 
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}
 	}
 
+	
 	//////////////////////////////////////////////////////////
-	public void setModels(List<Model> models)
+	public void setModelsList(List<Model> models)
 	{
-		// get the whole first document
+		// get the whole first document from where all the models are taken
 		DBObject first_doc = coll.findOne();	
 
 		//System.out.println(first_doc);
-
+		
+		// extracts characters and tokens from given string
 		JSONTokener tokener = new JSONTokener(first_doc.toString());
 
 		try {
@@ -89,6 +93,7 @@ public class MongoPrologInterface {
 
 	}	
 
+	
 	//////////////////////////////////////////////////////////
 	public String[] getModelNames()
 	{
@@ -96,7 +101,7 @@ public class MongoPrologInterface {
 		List<Model> models = new ArrayList<Model>();
 		
 		// set the model list
-		this.setModels(models);
+		this.setModelsList(models);
 		
 		// a string array with all the model names
 		String[] model_names = new String[models.size()];
@@ -111,6 +116,7 @@ public class MongoPrologInterface {
 		return model_names;
 	}
 	
+	
 	//////////////////////////////////////////////////////////
 	public String[] getLinkNames(String model_name)
 	{
@@ -118,7 +124,7 @@ public class MongoPrologInterface {
 		List<Model> models = new ArrayList<Model>();
 		
 		// set the model list
-		this.setModels(models);		
+		this.setModelsList(models);		
 		
 		// loop through all the models until the given name is found
 		for(int i = 0; i < models.size(); i++)
@@ -149,38 +155,78 @@ public class MongoPrologInterface {
 		// return null if the given name does not match anything
 		return null;
 	}
-
-	public String returnAString()
-	{
-		return "hit_hand_mock";
-	}
 	
-	public String returnGivenString(String string)
-	{
-		return string;
-	}
 	
 	//////////////////////////////////////////////////////////
-//	public static void main(String[] args) 
-//	{				
-//		MongoPrologInterface mpi = new MongoPrologInterface();
-//
-//		//		List<Model> models = new ArrayList<Model>();
-//		//		
-//		//		mpi.setModels(models);
-//		//		
-//		//		for(int i = 0; i < models.size(); i++)
-//		//		{
-//		//			System.out.println(models.get(i).getName());
-//		//			List<Link> links = models.get(i).getLinks();
-//		//			
-//		//			for(int j = 0; j < links.size(); j++)
-//		//			{
-//		//				System.out.println("\t" + links.get(j).getName());
-//		//			}
-//		//			
-//		//		}
-//		
+	public Pose getModelPose(String model_name, long timestamp)
+	{
+		Pose _pose = new Pose();
+		
+		// query for getting the document at the given timestamp
+		BasicDBObject query = new BasicDBObject("time.timestamp", timestamp);		
+	    
+		// fields for projecting only the pose of the given model name
+		BasicDBObject fields = new BasicDBObject("_id", 0);
+		fields.append("models", new BasicDBObject("$elemMatch", new BasicDBObject("name", model_name)));
+		fields.append("models.pose", 1);
+		
+		// find the first document for the query (it should only be one)
+		DBObject first_doc = coll.findOne(query, fields);	
+		
+		//System.out.println(first_doc);
+		
+		// extracts characters and tokens from given string
+		JSONTokener tokener = new JSONTokener(first_doc.toString());
+		
+		try {
+			// get the JSON root object
+			JSONObject root_obj = new JSONObject(tokener);
+			
+			// get the models array (is only one value but of type array)
+			JSONArray models_array = root_obj.getJSONArray("models");
+
+			// get the pose from the array
+			JSONObject pose = models_array.getJSONObject(0).getJSONObject("pose");
+			
+			// get the values from the pose
+			double x 		= pose.getDouble("x");
+			double y 		= pose.getDouble("y");
+			double z 		= pose.getDouble("z");
+			double roll 	= pose.getDouble("roll");
+			double pitch 	= pose.getDouble("pitch");
+			double yaw 		= pose.getDouble("yaw");
+
+			_pose.setPose(x, y, z, roll, pitch, yaw);
+					
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		
+		return _pose;
+	}
+	
+
+	//////////////////////////////////////////////////////////
+	public static void main(String[] args) 
+	{				
+		MongoPrologInterface mpi = new MongoPrologInterface();
+
+		//		List<Model> models = new ArrayList<Model>();
+		//		
+		//		mpi.setModels(models);
+		//		
+		//		for(int i = 0; i < models.size(); i++)
+		//		{
+		//			System.out.println(models.get(i).getName());
+		//			List<Link> links = models.get(i).getLinks();
+		//			
+		//			for(int j = 0; j < links.size(); j++)
+		//			{
+		//				System.out.println("\t" + links.get(j).getName());
+		//			}
+		//			
+		//		}
+		
 //		String[] model_names = mpi.getModelNames();
 //		for(int i = 0; i < model_names.length; i++)
 //		{
@@ -193,7 +239,9 @@ public class MongoPrologInterface {
 //		{
 //			System.out.println(link_names[i]);
 //		}
-//		
-//	}
+		
+		//System.out.println(mpi.getModelPose("spatula", 3784000000L));
+		
+	}
 
 }

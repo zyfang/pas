@@ -4,7 +4,8 @@
 		get_links/2,
 		add_link_clauses/2,
 		add_model_clauses/1,
-		add_clauses/0	
+		add_clauses/0,
+		get_model_pose/2	
 	]).
 	
 :- use_module(library('jpl')).
@@ -27,8 +28,8 @@ add_link_clauses(_,[]).
 	
 add_link_clauses(Model, [H_Link|T_Link]) :-
 	assert(link(H_Link)),
-	assert(parent(Model, H_Link)),
-	assert(child(H_Link, Model)),
+	assert(parent_of(Model, H_Link)),
+	assert(child_of(H_Link, Model)),
 	add_link_clauses(Model, T_Link).
 	
 	
@@ -40,11 +41,17 @@ add_model_clauses([H_Model|T_Model]) :-
 	add_link_clauses(H_Model, Link_Arr),
 	add_model_clauses(T_Model).
 
+
 add_clauses :-
 	get_models(Model_Arr),
 	add_model_clauses(Model_Arr).
 	
 	
+get_model_pose(Model, Timestamp) :-
+	jpl_new('mongojpl.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'getModelPose', [Model, Timestamp], Pose),
+	jpl_array_to_list(Pose, Pose_Arr),
+	write(Pose_Arr).
 	
 	
 	
