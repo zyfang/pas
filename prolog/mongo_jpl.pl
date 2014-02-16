@@ -5,7 +5,7 @@
 		add_link_clauses/2,
 		add_model_clauses/1,
 		add_clauses/0,
-		get_model_pose/2	
+		get_model_pose/1	
 	]).
 	
 :- use_module(library('jpl')).
@@ -47,11 +47,10 @@ add_clauses :-
 	add_model_clauses(Model_Arr).
 	
 	
-get_model_pose(Model, Timestamp) :-
+get_model_pose(Model) :-
 	jpl_new('mongojpl.MongoPrologInterface', [], DB),
-	jpl_call(DB, 'getModelPose', [Model, Timestamp], Pose),
-	jpl_array_to_list(Pose, Pose_Arr),
-	write(Pose_Arr).
+	jpl_call(DB, 'getModelPose', [Model], Pose),
+	write(Pose).
 	
 	
 	
