@@ -4,28 +4,14 @@
 
 package mongojpl;
 
-public class Contact{
-
-	private Collision collision1;
-	private Collision collision2;
+public class Contact extends Entity{
 	
-	// constructor
-	public Contact( Collision _col1, Collision _col2){	
-		this.collision1 = _col1;
-		this.collision2 = _col2;
+	/**
+	 * Contact constructor
+	 * @param _name
+	 */
+	public Contact(String _name){
+		super(_name);		
 	}
-	
-	public Collision getCollision1() {
-		return collision1;
-	}
-	public void setCollision1(Collision collision1) {
-		this.collision1 = collision1;
-	}
-	public Collision getCollision2() {
-		return collision2;
-	}
-	public void setCollision2(Collision collision2) {
-		this.collision2 = collision2;
-	}
-	
+		
 }

@@ -4,38 +4,46 @@
 
 package mongojpl;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Collision extends Entity{
+
+	private Map<String, Contact> contacts;
 	
-	private Map<String, Contact> collisions;
+	/**
+	 * Collision constructor
+	 * @param _name
+	 */
+	public Collision(String _name) {
+		super(_name);
+		
+		this.contacts = new HashMap<String, Contact>();
+	}
 
-	private List<Contact> a_contacts;
+	/**
+	 * get the contacts map
+	 * @return
+	 */
+	public Map<String, Contact> getContacts() {
+		return contacts;
+	}
+
+	/**
+	 * Set new contacts map
+	 * @param _contacts
+	 */
+	public void setContacts(Map<String, Contact> _contacts) {
+		this.contacts.clear();
+		this.contacts.putAll(_contacts);
+	}
 	
-	public Collision(String name) {
-		super(name);
-		
-		this.setCollisions(new HashMap<String, Contact>());
-		
-		this.a_contacts = new ArrayList<Contact>();
+	/**
+	 * Add new contact to the map
+	 * @param _name
+	 * @param _contact
+	 */
+	public void addContact(String _name, Contact _contact){
+		this.contacts.put(_name, _contact);
 	}
-
-	public List<Contact> getAContacts() {
-		return a_contacts;
-	}
-
-	public void setAContacts(List<Contact> contacts) {
-		this.a_contacts = contacts;
-	}
-
-	public Map<String, Contact> getCollisions() {
-		return collisions;
-	}
-
-	public void setCollisions(Map<String, Contact> collisions) {
-		this.collisions = collisions;
-	}	
 }

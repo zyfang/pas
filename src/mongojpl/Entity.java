@@ -5,20 +5,41 @@ public class Entity {
 	private String name;
 	private Pose pose;
 
-	public Entity(String name){
-		this.name = name;		
+	/**
+	 * Entity constructor
+	 * @param _name
+	 */
+	public Entity(String _name){
+		this.name = _name;		
 	}
 
-	
+	/**
+	 * Get the name of the entity
+	 */
 	public String getName() {
-		return name;
+		return this.name;
 	}
-	public void setName(String name) {
-		this.name = name;
+	
+	/**
+	 * Set the name of the entity
+	 * @param _name
+	 */
+	public void setName(String _name) {
+		this.name = _name;
 	}
+	
+	/**
+	 * get the pose of the entity
+	 * @return
+	 */
 	public Pose getPose() {
-		return pose;
+		return this.pose;
 	}
+	
+	/**
+	 * set the pose of the entity
+	 * @param pose
+	 */
 	public void setPose(Pose pose) {
 		this.pose = pose;
 	}

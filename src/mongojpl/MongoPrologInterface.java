@@ -46,7 +46,10 @@ public class MongoPrologInterface {
 	}
 
 	//////////////////////////////////////////////////////////	
-	public Map<String, Model> getWorldState(long _timestamp){
+	public World getWorldState(long _timestamp){
+		
+		// local models map
+		World world = new World();		
 		
 		// query for getting the document at the given timestamp
 		BasicDBObject _query = new BasicDBObject("timestamp", _timestamp);
@@ -59,28 +62,13 @@ public class MongoPrologInterface {
 		// extracts characters and tokens from given string
 		JSONTokener tokener = new JSONTokener(_doc.toString());
 		
-		
-		return new HashMap<String, Model>();
-	}
-	
-	//////////////////////////////////////////////////////////
-	public void setUpEntities(List<Model> models){
-		// set up all the models with the included children
-		
-		// get the whole first document from where all the models are taken
-		DBObject first_doc = coll.findOne();	
-
-		//System.out.println(first_doc);
-		
-		// extracts characters and tokens from given string
-		JSONTokener tokener = new JSONTokener(first_doc.toString());
-
-		try {
+		try{
 			// get the JSON root object
 			JSONObject root_obj = new JSONObject(tokener);
-
+			
 			// get the models JSON array from the JSON root object
 			JSONArray models_array = root_obj.getJSONArray("models");
+			
 			
 			//////////////////////////////////////////////////////////
 			// loop through all the models array
@@ -90,11 +78,12 @@ public class MongoPrologInterface {
 				JSONObject curr_model_obj = models_array.getJSONObject(i);
 
 				// create a local model with the given name from the JSON obj
-				Model curr_model = new Model(curr_model_obj.getString("name"));
+				Model curr_model = new Model(curr_model_obj.getString("name"));				
 
 				// get the links JSON array from the current JSON obj 
 				JSONArray links_array = models_array.getJSONObject(i).getJSONArray("links");
 
+				
 				//////////////////////////////////////////////////////////
 				// loop through all the links for the current model
 				for(int j = 0; j < links_array.length(); j++)
@@ -108,6 +97,7 @@ public class MongoPrologInterface {
 					// get the collision JSON array from the current JSON obj 
 					JSONArray collisions_array = links_array.getJSONObject(j).getJSONArray("collisions");
 					
+					
 					//////////////////////////////////////////////////////////
 					// loop through all the collisions for the current link
 					for(int k = 0; k < collisions_array.length(); k++)
@@ -118,24 +108,45 @@ public class MongoPrologInterface {
 						// create a local model with the given name from the JSON obj
 						Collision curr_collision = new Collision(curr_collision_obj.getString("name"));
 						
-						// add the current collision to the collisions list
-						curr_link.addACollision(curr_collision);						
-					}
-
-					// add the current link to the link list
-					curr_model.addALink(curr_link);					
+						// get the contacts JSON array
+						JSONArray contacts_array = collisions_array.getJSONObject(k).getJSONArray("contacts");
+						
+						
+						//////////////////////////////////////////////////////////
+						// loop through all the contacts for the current collision
+						for(int l = 0; l < contacts_array.length(); l++)
+						{
+							// get the given JSON object from the array
+							JSONObject curr_contact_obj = contacts_array.getJSONObject(l);
+							
+							// create a local model with the given name fron the JSON obj
+							Contact curr_contact = new Contact(curr_contact_obj.getString("name"));
+							
+							// add the current contact to the map, using the name as key value
+							curr_collision.addContact(curr_contact.getName(), curr_contact);
+						}
+			
+						// add the current collision to the map, using the name as key value
+						curr_link.addCollision(curr_collision.getName(), curr_collision);
+											
+					}					
+					
+					// add the current link to the map, using the name as key value
+					curr_model.addLink(curr_link.getName(), curr_link);	
 				}
-
-				// add current model to the models list
-				models.add(curr_model);
-			}		
-
+				
+				// add current model to the world
+				world.addModel(curr_model.getName(), curr_model);
+				
+			}
+			
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
-
+		
+		
+		return world;
 	}
-
 	
 	//////////////////////////////////////////////////////////
 	public String[] getModelNames()
@@ -158,7 +169,7 @@ public class MongoPrologInterface {
 		// return the string array with the model names
 		return model_names;
 	}
-	
+		
 	
 	//////////////////////////////////////////////////////////
 	public String[] getLinkNames(String model_name)
@@ -198,6 +209,7 @@ public class MongoPrologInterface {
 		// return null if the given name does not match anything
 		return null;
 	}
+	
 	
 	//////////////////////////////////////////////////////////
 	public String[] getCollisionNames(String link_name)
@@ -306,46 +318,17 @@ public class MongoPrologInterface {
 	{				
 		MongoPrologInterface mpi = new MongoPrologInterface();
 		
-//		mpi.getWorldState(25171000000L);
+		World world = mpi.getWorldState(25227000000L);
+		
+		System.out.println(world.getModels().toString());
+		
+		System.out.println(world.getModels().get("spatula").getLinks().toString());
+		
+		System.out.println(world.getModels().get("spatula").getLinks().get("spatula_link").getCollisions().toString());
+		
+		System.out.println(world.getModels().get("spatula").
+				getLinks().get("spatula_link").getCollisions().get("spatula_handle_collision").getContacts().toString());
 
-		//		List<Model> models = new ArrayList<Model>();
-		//		
-		//		mpi.setModels(models);
-		//		
-		//		for(int i = 0; i < models.size(); i++)
-		//		{
-		//			System.out.println(models.get(i).getName());
-		//			List<Link> links = models.get(i).getLinks();
-		//			
-		//			for(int j = 0; j < links.size(); j++)
-		//			{
-		//				System.out.println("\t" + links.get(j).getName());
-		//			}
-		//			
-		//		}
-		
-//		String[] model_names = mpi.getModelNames();
-//		for(int i = 0; i < model_names.length; i++)
-//		{
-//			System.out.println(model_names[i]);
-//		}
-//		
-//		String[] link_names = mpi.getLinkNames("hit_hand");
-//		
-//		for(int i = 0; i < link_names.length; i++)
-//		{
-//			System.out.println(link_names[i]);
-//		}
-		
-//		String[] collision_names = mpi.getCollisionNames("spatula_link");
-//		
-//		for(int i = 0; i < collision_names.length; i++)
-//		{
-//			System.out.println(collision_names[i]);
-//		}
-		
-//		System.out.println(mpi.getModelPose("spatula"/*, 3784000000L*/));
-		
 	}
 
 }
