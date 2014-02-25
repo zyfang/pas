@@ -16,8 +16,7 @@
 %%
 
 :- register_ros_package(knowrob_common).
-:- register_ros_package(mongo_jpl).
+:- register_ros_package(mongo_prolog).
 
 
-:- use_module(library(mongo_jpl)).
-:- use_module(library(demos_jpl)).
+:- use_module(library(mongo_prolog)).

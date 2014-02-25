@@ -17,8 +17,8 @@ add_runtime_classpath(${PROJECT_SOURCE_DIR}/lib/java-json.jar)
 
 add_java_source_dir(${PROJECT_SOURCE_DIR}/src)
 
-rosbuild_find_ros_package(mongo_jpl)
-set( LOCAL_PACKAGE_PATH ${mongo_jpl_PACKAGE_PATH} )
+rosbuild_find_ros_package(mongo_prolog)
+set( LOCAL_PACKAGE_PATH ${mongo_prolog_PACKAGE_PATH} )
 fix_ros_destination_path(LOCAL_PACKAGE_PATH)
 
-rospack_add_java_executable(MongoPrologInterface mongo_jpl.MongoPrologInterface)
+rospack_add_java_executable(MongoPrologInterface mongo_prolog.MongoPrologInterface)

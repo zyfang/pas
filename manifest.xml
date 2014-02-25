@@ -1,13 +1,13 @@
 <package>
-  <description brief="mongo_jpl">
+  <description brief="mongo_prolog">
 
-     mongo_jpl
+     mongo_prolog
 
   </description>
   <author>Andrei Haidu</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/mongo_jpl</url>
+  <url>http://ros.org/wiki/mongo_prolog</url>
   
   <depend package="rosjava_jni"/>
   <depend package="jpl"/>
