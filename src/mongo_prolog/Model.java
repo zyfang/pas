@@ -4,17 +4,12 @@
 
 package mongo_prolog;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Model extends Entity{
 	
 	private Map<String, Link> links;
-	
-	//TODO
-	private List<Link> a_links;	
 	
 	/**
 	 * Model constructor
@@ -24,8 +19,6 @@ public class Model extends Entity{
 		super(_name);
 		
 		this.links = new HashMap<String, Link>();
-		
-		this.a_links = new ArrayList<Link>();
 	}	
 
 	/**
@@ -54,20 +47,4 @@ public class Model extends Entity{
 	{
 		this.links.put(_name, _link);
 	}
-	
-	
-	
-	///
-	public List<Link> getALinks() {
-		return a_links;
-	}
-
-	public void setALinks(List<Link> links) {
-		this.a_links = links;
-	}
-	
-	public void addALink(Link link) {
-		this.a_links.add(link);
-	}
-	///
 }

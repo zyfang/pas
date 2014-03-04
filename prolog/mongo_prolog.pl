@@ -5,19 +5,19 @@
 :- module(mongo_prolog,
 	[
 		create_interface/1,
+		set_world_state/2,
 		get_models/2,
 		get_links/3,
 		get_collisions/4,
-		get_model_pose/1,	
 		add_collision_clauses/2,
 		add_link_clauses/3,
 		add_model_clauses/2,
-		add_clauses/0,
-		add_world_clauses/0
+		add_world_clauses/0,
+		get_contacts/5,
+		get_model_pose/3	
 	]).
 	
 :- use_module(library('jpl')).
-
 
 
 % create_interface(-IJavaDB).
@@ -25,6 +25,11 @@
 create_interface(IJavaDB) :-		
 	jpl_new('mongo_prolog.MongoPrologInterface', [], IJavaDB).
 	
+% set_world_state(+IJavaDB, +Timestamp).
+%% set all entities at given timestamp
+set_world_state(IJavaDB, Timestamp) :-
+	jpl_call(IJavaDB, 'setWorldState',[Timestamp],[]).
+
 
 % get_models(+IJavaDB, -Model_Arr).
 %% calls 'getModelNames' java function, returns array of model names 
@@ -35,7 +40,7 @@ get_models(IJavaDB, Model_Arr) :-
 
 % get_links(+IJavaDB, +Model, -Link_Arr).
 %% calls 'getLinkNames' java function of the given model,
-%% returns array of link names 
+%% returns an array of link names 
 get_links(IJavaDB, Model, Link_Arr) :-
 	jpl_call(IJavaDB, 'getLinkNames', [Model], Links),
 	jpl_array_to_list(Links, Link_Arr).
@@ -43,17 +48,10 @@ get_links(IJavaDB, Model, Link_Arr) :-
 
 % get_collisions(+IJavaDB, +Model, +Link, -Collision_Arr).
 %% calls 'getCollisionNames' of the given Model::Link,
-%% returns array of collision names 
+%% returns an array of collision names 
 get_collisions(IJavaDB, Model, Link, Collision_Arr) :-
 	jpl_call(IJavaDB, 'getCollisionNames', [Model, Link], Collisions),
 	jpl_array_to_list(Collisions, Collision_Arr).
-
-
-get_model_pose(Model) :-
-	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
-	jpl_call(DB, 'getModelPose', [Model], Pose),
-	write(Pose).
-
 
 
 %% make sure when the array is empty the return is 'true'	
@@ -95,13 +93,31 @@ add_model_clauses(IJavaDB, [H_Model|T_Model]) :-
 	add_link_clauses(IJavaDB, H_Model, Link_Arr),
 	add_model_clauses(IJavaDB, T_Model).
 	 
-	
-%% set world clauses by initializing java interface object
-%% getting all models, links, collisions and asserting them
+
+%% set world clauses by initializing java interface object,
+%% setting the world entities in the given timestamp
+%% assert all mdoels, links, collisions and their relations
 add_world_clauses :-
 	create_interface(IJavaDB),
+%	set_world_state(IJavaDB, Timestamp),
 	get_models(IJavaDB, Model_Arr),
 	add_model_clauses(IJavaDB, Model_Arr).
 
 		
+	
+% get_contacts(+IJavaDB, +Model, +Link, +Collision, -Contact_Arr).
+%% calls 'getContactNames' of the given Model::Link::Collision,
+%% returns an array of contact names
+get_contacts(IJavaDB, Model, Link, Collision, Contact_Arr) :-
+	jpl_call(IJavaDB, 'getContactNames', [Model, Link, Collision], Contacts),
+	jpl_array_to_list(Contacts, Contact_Arr).
+
+
+% get_model_pose(+Model, -Pose_Arr).
+%% returns the pose of the given model as an array of double [X,Y,Z,R,P,Y]
+get_model_pose(Model, Timestamp,  Pose_Arr) :-
+	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'getModelPose', [Model, Timestamp], Pose),
+	jpl_array_to_list(Pose, Pose_Arr).
+
 	

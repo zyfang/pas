@@ -4,16 +4,12 @@
 
 package mongo_prolog;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Link extends Entity{
 
 	private Map<String, Collision> collisions;
-	
-	private List<Collision> a_collisions; 
 	
 	/**
 	 * Link constructor
@@ -23,8 +19,6 @@ public class Link extends Entity{
 		super(_name);
 		
 		this.collisions = new HashMap<String, Collision>();
-		
-		this.setACollisions(new ArrayList<Collision>());
 	}
 
 	/**
@@ -52,22 +46,5 @@ public class Link extends Entity{
 	public void addCollision(String _name, Collision _collision){
 		this.collisions.put(_name, _collision);
 	}
-
-
-	
-	///
-	public List<Collision> getACollisions() {
-		return a_collisions;
-	}
-
-	public void setACollisions(List<Collision> collisions) {
-		this.a_collisions = collisions;
-	}
-	
-	public void addACollision(Collision collision)
-	{
-		this.a_collisions.add(collision);
-	}
-	///
 	
 }
