@@ -113,11 +113,21 @@ get_contacts(IJavaDB, Model, Link, Collision, Contact_Arr) :-
 	jpl_array_to_list(Contacts, Contact_Arr).
 
 
-% get_model_pose(+Model, -Pose_Arr).
+% get_model_pose(+Model, +Timestamp, -Pose_Arr).
 %% returns the pose of the given model as an array of double [X,Y,Z,R,P,Y]
 get_model_pose(Model, Timestamp,  Pose_Arr) :-
 	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
 	jpl_call(DB, 'getModelPose', [Model, Timestamp], Pose),
 	jpl_array_to_list(Pose, Pose_Arr).
+
+
+% get_model_bb(+Model, +Timestamp, -BB_Arr).
+%% returns the bounding box of the given model as an array of double [minX,minY,minZ,maxX,maxY,maxZ]
+get_model_bb(Model, Timestamp, BB_Arr) :-
+	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'getModelBoundingBox', [Model, Timestamp], BB),
+	jpl_array_to_list(BB, BB_Arr).
+
+
 
 	
