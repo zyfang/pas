@@ -19,6 +19,7 @@
 	
 :- use_module(library('jpl')).
 
+:- use_module(library(pce)).
 
 % create_interface(-IJavaDB).
 %% instantiates the mongo - java - prolog interface object
@@ -127,6 +128,84 @@ get_model_bb(Model, Timestamp, BB_Arr) :-
 	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
 	jpl_call(DB, 'getModelBoundingBox', [Model, Timestamp], BB),
 	jpl_array_to_list(BB, BB_Arr).
+
+
+% get_model_contacts(+Model, +Timestamp, -Contacts)
+%% returns the contacts as collisions of the given model
+get_model_contacts(Model, Timestamp, Contacts_Arr) :-	
+	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'getModelContactNames', [Model, Timestamp], Contacts),
+	jpl_array_to_list(Contacts, Contacts_Arr).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% TESTING..
+
+
+get_model_of_collision(Model,Collision) :-
+	parent_of(X, Collision),
+	parent_of(Model,X). 
+
+
+%gen_model_arr([]).
+
+%gen_model_arr([H_Arr|T_Arr]) :-
+	
+
+
+iterate_coll_arr([]).
+
+iterate_coll_arr([H_Coll|T_Coll]) :-
+	get_model_of_collision(Model,H_Coll),
+%	append(Model,Models_Arr,Models_Arr),
+	write(Model),
+	iterate_coll_arr(T_Coll).
+
+get_contacts_models(Model, Timestamp, Models_Arr) :-
+	get_model_contacts(Model, Timestamp, Contacts_Arr),
+	iterate_coll_arr(Contacts_Arr, Models_Arr).
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

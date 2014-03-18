@@ -21,8 +21,6 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 
-
-
 public class MongoPrologInterface {
 
 	private static final long A_TIMESTAMP = 25205000000L;
@@ -32,8 +30,9 @@ public class MongoPrologInterface {
 	private DBCollection coll;
 	private World world;
 
-	
-	//////////////////////////////////////////////////////////
+	/**
+	 * MongoPrologInterface constructor
+	 */
 	public MongoPrologInterface() {
 		
 		// echo for prolog
@@ -54,17 +53,20 @@ public class MongoPrologInterface {
 		}
 	}
 
-	//////////////////////////////////////////////////////////	
-	public void setWorldState(long _timestamp){
+	/**
+	 * 
+	 * @param timestamp
+	 */
+	public void setWorldState(long timestamp){
 		
 		// echo for prolog
-		System.out.println("IJavaDB: " + "Asserting world state from timestamp: " + _timestamp + " :");
+		System.out.println("IJavaDB: " + "Asserting world state from timestamp: " + timestamp + " :");
 		
 		// local models map
 		World local_world = new World();		
 		
-		// query for getting the document at the given timestamp
-		BasicDBObject query = new BasicDBObject("timestamp", _timestamp);
+		// query for getting the document at the given closest greater or equal than the timestamp
+		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", timestamp));
 		
 		// get document at given timestamp
 		DBObject doc = coll.findOne(query);
@@ -128,9 +130,9 @@ public class MongoPrologInterface {
 //						// echo for prolog
 //						System.out.println("\t\t\t" + curr_collision.getName());
 						
-						// get the contacts JSON array
-						JSONArray contacts_array = collisions_array.getJSONObject(k).getJSONArray("contacts");
-						
+//						// get the contacts JSON array
+//						JSONArray contacts_array = collisions_array.getJSONObject(k).getJSONArray("contacts");
+//						
 //						TODO, not needed since we get the contacts at given timestamps in the future
 //						//////////////////////////////////////////////////////////
 //						// loop through all the contacts for the current collision
@@ -170,8 +172,9 @@ public class MongoPrologInterface {
 		this.world = local_world;
 	}
 	
-	
-	//////////////////////////////////////////////////////////
+	/**
+	 * 
+	 */
 	public String[] getModelNames()
 	{	
 		// check if world is initialized, if not, get the world at the initial timestamp
@@ -199,7 +202,11 @@ public class MongoPrologInterface {
 	}
 		
 	
-	//////////////////////////////////////////////////////////
+	/**
+	 * 
+	 * @param model_name
+	 * @return
+	 */
 	public String[] getLinkNames(String model_name)
 	{
 		// check if world is initialized, if not, get the world at the initial timestamp
@@ -225,7 +232,12 @@ public class MongoPrologInterface {
 	}
 	
 	
-	//////////////////////////////////////////////////////////
+	/**
+	 * 
+	 * @param model_name
+	 * @param link_name
+	 * @return
+	 */
 	public String[] getCollisionNames(String model_name, String link_name)
 	{
 		// check if world is initialized, if not, get the world at the initial timestamp
@@ -253,7 +265,13 @@ public class MongoPrologInterface {
 	}
 	
 	
-	//////////////////////////////////////////////////////////
+	/**
+	 * 
+	 * @param model_name
+	 * @param link_name
+	 * @param collision_name
+	 * @return
+	 */
 	public String[] getContactNames(String model_name, String link_name, String collision_name)
 	{
 		// check if world is initialized, if not, get the world at the initial timestamp
@@ -283,19 +301,24 @@ public class MongoPrologInterface {
 	}
 	
 	
-	//////////////////////////////////////////////////////////
+	/**
+	 * 
+	 * @param model_name
+	 * @param timestamp
+	 * @return
+	 */
 	public double[] getModelPose(String model_name, long timestamp)
 	{
 		// echo for prolog
-		System.out.println("IJavaDB: " + "getting models '" + model_name + "' pose at timestamp: " + timestamp);
+		System.out.println("IJavaDB: getting models '" + model_name + "' pose at timestamp: " + timestamp);
 		
 		// pose, X Y Z R P Y
 		double[] pose = new double[6];
 		
 		//long timestamp = A_TIMESTAMP;
 		
-		// query for getting the document at the given timestamp
-		BasicDBObject query = new BasicDBObject("timestamp", timestamp);		
+		// query for getting the document at the given closest greater or equal than the timestamp
+		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", timestamp));
 	    
 		// fields for projecting only the pose of the given model name
 		BasicDBObject fields = new BasicDBObject("_id", 0);
@@ -305,6 +328,13 @@ public class MongoPrologInterface {
 		
 		// find the first document for the query (it should only be one)
 		DBObject first_doc = coll.findOne(query, fields);
+		
+		// check that the query returned a document
+		if(first_doc == null)
+		{
+			System.out.println("IJavaDB: timestamp out of bounds");
+			return null;
+		}
 		
 		// extracts characters and tokens from given string
 		JSONTokener tokener = new JSONTokener(first_doc.toString());
@@ -340,7 +370,12 @@ public class MongoPrologInterface {
 	}
 	
 	
-	//////////////////////////////////////////////////////////
+	/**
+	 * 
+	 * @param model_name
+	 * @param timestamp
+	 * @return
+	 */
 	public double[] getModelBoundingBox(String model_name, long timestamp)
 	{
 		// echo for prolog
@@ -349,8 +384,8 @@ public class MongoPrologInterface {
 		// BB min XYZ, max XYZ
 		double[] bounding_box = new double[6];
 		
-		// query for getting the document at the given timestamp
-		BasicDBObject query = new BasicDBObject("timestamp", timestamp);		
+		// query for getting the document at the given closest greater or equal than the timestamp
+		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", timestamp));	
 	    
 		// fields for projecting only the pose of the given model name
 		BasicDBObject fields = new BasicDBObject("_id", 0);
@@ -360,6 +395,13 @@ public class MongoPrologInterface {
 		
 		// find the first document for the query (it should only be one)
 		DBObject first_doc = coll.findOne(query, fields);
+		
+		// check that the query returned a document
+		if(first_doc == null)
+		{
+			System.out.println("IJavaDB: timestamp out of bounds");
+			return null;
+		}
 		
 		// extracts characters and tokens from given string
 		JSONTokener tokener = new JSONTokener(first_doc.toString());
@@ -396,13 +438,99 @@ public class MongoPrologInterface {
 		return bounding_box;
 	}
 	
+
+	/**
+	 * TODO NOW there are no contact duplicates, even if from different collisions
+	 * TODO it returns the collisions regarding the model as a whole
+	 * @param model_name
+	 * @param timestamp
+	 * @return
+	 */
+	public String[] getModelContactNames(String model_name, long timestamp){
+		// echo for prolog
+		System.out.println("IJavaDB: " + "getting contacts for  '" + model_name +"' .." );
+		
+		// needs a dynamic list since we do not no the exact nr of contacts
+		List<String> contacts_list = new ArrayList<String>(); 
+		
+		// query for getting the document at the given closest greater or equal than the timestamp
+		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", timestamp));	
+		
+		// fields for projecting only the contact names
+		BasicDBObject fields = new BasicDBObject("_id", 0);
+		fields.append("models", new BasicDBObject("$elemMatch", new BasicDBObject("name", model_name)));
+		fields.append("models.links.collisions.contacts.name", 1);
+		
+		// find the first document for the query (it should only be one)
+		DBObject first_doc = coll.findOne(query, fields);
+		
+		// check that the query returned a document
+		if(first_doc == null)
+		{
+			System.out.println("IJavaDB: timestamp out of bounds");
+			return null;
+		}
+						
+		// extracts characters and tokens from given string
+		JSONTokener tokener = new JSONTokener(first_doc.toString());
+		
+		try {
+			// get the JSON root object
+			JSONObject root_obj = new JSONObject(tokener);
+			
+			// get the models array (is only one value but of type array)
+			JSONArray models_array = root_obj.getJSONArray("models");
+			
+			// get the links array (need to check all links for collisions)
+			JSONArray links_array = models_array.getJSONObject(0).getJSONArray("links");
+			
+			// loop through all the links
+			for (int i = 0; i < links_array.length(); i++){
+				
+				// get collision array from the current link
+				JSONArray collisions_array = links_array.getJSONObject(i).getJSONArray("collisions");
+				
+				// loop through all collisions
+				for (int j = 0; j < collisions_array.length(); j++){
+					
+					// get contacts of the current collision
+					JSONArray contacts_array = collisions_array.getJSONObject(j).getJSONArray("contacts");
+					
+					// loop through contacts and add then to the list (if not already there, no duplicates)
+					for (int k = 0; k < contacts_array.length(); k++){
+						
+						// get the contact name
+						String contact_name = contacts_array.getJSONObject(k).getString("name");
+						
+						// add the contact to the list only if it is not already present
+						if (!contacts_list.contains(contact_name)){
+							contacts_list.add(contact_name);
+						}
+					}
+				}
+			}
+					
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}	
+		
+		// return the list as an array of strings
+		return contacts_list.toArray(new String[contacts_list.size()]);
+	}
 	
-	//////////////////////////////////////////////////////////
+	
+	/**
+	 * 
+	 * @param args
+	 */
 	public static void main(String[] args) 
 	{				
 		MongoPrologInterface mpi = new MongoPrologInterface();
 		
-		System.out.println(mpi.getModelBoundingBox("mug", 25205000000L)[5]);
+//		System.out.println(mpi.getModelBoundingBox("mug", 25205000000L)[5]);
+//		System.out.println(mpi.getModelPose("mug", 25411001000L)[5]);
+		
+		mpi.getModelContactNames("spatula", 26411000000L);
 		
 //		World world = mpi.getWorldState(25205000000L);
 		
