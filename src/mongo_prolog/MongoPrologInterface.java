@@ -25,7 +25,7 @@ import com.mongodb.MongoClient;
 
 public class MongoPrologInterface {
 
-	private static final long A_TIMESTAMP = 25205000000L;
+	private static final long A_TIMESTAMP = 0L;
 	
 	private MongoClient mongoClient;
 	private DB db;
@@ -34,7 +34,7 @@ public class MongoPrologInterface {
 
 	
 	//////////////////////////////////////////////////////////
-	public MongoPrologInterface() {
+	public MongoPrologInterface(int collection) {
 		
 		// echo for prolog
 		System.out.println("IJavaDB: " + "calling MongoPrologInterface constructor, setting up connection to database..");
@@ -47,7 +47,7 @@ public class MongoPrologInterface {
 			this.db = mongoClient.getDB("sim_db");
 
 			// get the given collection from the DB
-			this.coll = this.db.getCollection("collection_X");
+			this.coll = this.db.getCollection("collection_X" + collection);
 
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
@@ -58,7 +58,7 @@ public class MongoPrologInterface {
 	public void setWorldState(long _timestamp){
 		
 		// echo for prolog
-		System.out.println("IJavaDB: " + "Setting up world state at timestamp " + _timestamp + " :");
+		System.out.println("IJavaDB: " + "Asserting world state from timestamp: " + _timestamp + " :");
 		
 		// local models map
 		World local_world = new World();		
@@ -177,7 +177,6 @@ public class MongoPrologInterface {
 		// check if world is initialized, if not, get the world at the initial timestamp
 		if (this.world == null)
 		{
-			System.out.println("settin world to " + A_TIMESTAMP);
 			this.setWorldState(A_TIMESTAMP);
 		}
 				
@@ -205,8 +204,7 @@ public class MongoPrologInterface {
 	{
 		// check if world is initialized, if not, get the world at the initial timestamp
 		if (this.world == null)
-		{			
-			System.out.println("settin world to " + A_TIMESTAMP);
+		{
 			this.setWorldState(A_TIMESTAMP);
 		}
 		
@@ -288,6 +286,9 @@ public class MongoPrologInterface {
 	//////////////////////////////////////////////////////////
 	public double[] getModelPose(String model_name, long timestamp)
 	{
+		// echo for prolog
+		System.out.println("IJavaDB: " + "getting models '" + model_name + "' pose at timestamp: " + timestamp);
+		
 		// pose, X Y Z R P Y
 		double[] pose = new double[6];
 		
@@ -338,11 +339,145 @@ public class MongoPrologInterface {
 		return pose;
 	}
 	
+	
+	//////////////////////////////////////////////////////////
+	public double[] getLinkPose(String link_name, long timestamp)
+	{
+		// echo for prolog
+		System.out.println("IJavaDB: " + "getting link '" + link_name + "' pose at timestamp: " + timestamp);
+		
+		// pose, X Y Z R P Y
+		double[] pose = new double[6];
+		
+		//long timestamp = A_TIMESTAMP;
+		
+		// query for getting the document at the given timestamp
+		BasicDBObject query = new BasicDBObject("timestamp", timestamp);		
+	    
+		// fields for projecting all the links from the model sice there is no nested elemMatch function
+		// we need to loop then through all the returned links until we find the proper one
+		BasicDBObject fields = new BasicDBObject("_id", 0);
+		fields.append("models.links", 1);
+		fields.append("models", new BasicDBObject("$elemMatch", new BasicDBObject("links.name", link_name)));
+			
+		// find the first document for the query (it should only be one)
+		DBObject first_doc = coll.findOne(query, fields);
+		
+		// extracts characters and tokens from given string
+		JSONTokener tokener = new JSONTokener(first_doc.toString());
+		
+		try {
+			// get the JSON root object
+			JSONObject root_obj = new JSONObject(tokener);
+			
+			// get the models array (is only one value but of type array)
+			JSONArray models_array = root_obj.getJSONArray("models");			
+			
+			// get the links array from the result
+			JSONArray links_array = models_array.getJSONObject(0).getJSONArray("links");
+			
+			//////////////////////////////////////////////////////////
+			// loop through all the links to check for the given link name
+			for(int i = 0; i < links_array.length(); i++)
+			{
+				// get the given JSON object from the array
+				JSONObject curr_link_obj = links_array.getJSONObject(i);
+				
+				// check if the current links is the one we are looking for
+				if(curr_link_obj.getString("name").equals(link_name))
+				{
+					// get the position from the array
+					JSONObject json_pos = curr_link_obj.getJSONObject("pos");
+					
+					// get the orientation from the array
+					JSONObject json_rot = curr_link_obj.getJSONObject("rot");
+					
+					// set the pose
+					pose[0] = json_pos.getDouble("x");
+					pose[1] = json_pos.getDouble("y");
+					pose[2] = json_pos.getDouble("z");
+					
+					pose[3] = json_rot.getDouble("x");
+					pose[4] = json_rot.getDouble("y");
+					pose[5] = json_rot.getDouble("z");
+					
+					return pose;
+				};
+			}
 
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}	
+		
+		return null;
+	}
+	
+	
+	//////////////////////////////////////////////////////////
+	public double[] getModelBoundingBox(String model_name, long timestamp)
+	{
+		// echo for prolog
+		System.out.println("IJavaDB: " + "calling  '" + model_name + "' boundingbox at timestamp: " + timestamp);
+		
+		// BB min XYZ, max XYZ
+		double[] bounding_box = new double[6];
+		
+		// query for getting the document at the given timestamp
+		BasicDBObject query = new BasicDBObject("timestamp", timestamp);		
+	    
+		// fields for projecting only the pose of the given model name
+		BasicDBObject fields = new BasicDBObject("_id", 0);
+		fields.append("models", new BasicDBObject("$elemMatch", new BasicDBObject("name", model_name)));
+		fields.append("models.bbox.min", 1);
+		fields.append("models.bbox.max", 1);
+		
+		// find the first document for the query (it should only be one)
+		DBObject first_doc = coll.findOne(query, fields);
+		
+		// extracts characters and tokens from given string
+		JSONTokener tokener = new JSONTokener(first_doc.toString());
+		
+		try {
+			// get the JSON root object
+			JSONObject root_obj = new JSONObject(tokener);
+			
+			// get the models array (is only one value but of type array)
+			JSONArray models_array = root_obj.getJSONArray("models");
+
+			// get the bbox from the array
+			JSONObject json_bbox = models_array.getJSONObject(0).getJSONObject("bbox");
+			
+			// get the min value from the bbox
+			JSONObject json_min = json_bbox.getJSONObject("min");
+						
+			// get the max value from the bbox
+			JSONObject json_max = json_bbox.getJSONObject("max");
+			
+			// set the pose
+			bounding_box[0] = json_min.getDouble("x");
+			bounding_box[1] = json_min.getDouble("y");
+			bounding_box[2] = json_min.getDouble("z");
+			
+			bounding_box[3] = json_max.getDouble("x");
+			bounding_box[4] = json_max.getDouble("y");
+			bounding_box[5] = json_max.getDouble("z");
+					
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}	
+		
+		return bounding_box;
+	}
+	
+	
 	//////////////////////////////////////////////////////////
 	public static void main(String[] args) 
 	{				
-		MongoPrologInterface mpi = new MongoPrologInterface();
+		MongoPrologInterface mpi = new MongoPrologInterface(3);
+		
+//		System.out.println(mpi.getModelBoundingBox("mug", 15205000000L)[5]);
+		
+		mpi.getLinkPose("spatula_head_link", 15205000000L);
 		
 //		World world = mpi.getWorldState(25205000000L);
 		
