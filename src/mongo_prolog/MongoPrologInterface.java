@@ -23,7 +23,7 @@ import com.mongodb.MongoClient;
 
 public class MongoPrologInterface {
 
-	private static final long A_TIMESTAMP = 25205000000L;
+	private static final long A_TIMESTAMP = 0L;
 	
 	private MongoClient mongoClient;
 	private DB db;
@@ -32,9 +32,10 @@ public class MongoPrologInterface {
 
 	/**
 	 * MongoPrologInterface constructor
+	 * @param collection 
 	 */
-	public MongoPrologInterface() {
-		
+	//////////////////////////////////////////////////////////
+	public MongoPrologInterface(int collection) {		
 		// echo for prolog
 		System.out.println("IJavaDB: " + "calling MongoPrologInterface constructor, setting up connection to database..");
 		
@@ -46,7 +47,7 @@ public class MongoPrologInterface {
 			this.db = mongoClient.getDB("sim_db");
 
 			// get the given collection from the DB
-			this.coll = this.db.getCollection("collection_X");
+			this.coll = this.db.getCollection("collection_X" + collection);
 
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
@@ -372,6 +373,92 @@ public class MongoPrologInterface {
 	
 	/**
 	 * 
+	 * @param link_name
+	 * @param timestamp
+	 * @return
+	 */
+	//////////////////////////////////////////////////////////
+	public double[] getLinkPose(String link_name, long timestamp)
+	{
+		// echo for prolog
+		System.out.println("IJavaDB: " + "getting link '" + link_name + "' pose at timestamp: " + timestamp);
+		
+		// pose, X Y Z R P Y
+		double[] pose = new double[6];
+		
+		//long timestamp = A_TIMESTAMP;
+		
+		// query for getting the document at the given timestamp
+		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", timestamp));		
+	    
+		// fields for projecting all the links from the model sice there is no nested elemMatch function
+		// we need to loop then through all the returned links until we find the proper one
+		BasicDBObject fields = new BasicDBObject("_id", 0);
+		fields.append("models.links", 1);
+		fields.append("models", new BasicDBObject("$elemMatch", new BasicDBObject("links.name", link_name)));
+			
+		// find the first document for the query (it should only be one)
+		DBObject first_doc = coll.findOne(query, fields);
+		
+		// check that the query returned a document
+		if(first_doc == null)
+		{
+			System.out.println("IJavaDB: timestamp out of bounds");
+			return null;
+		}
+		
+		// extracts characters and tokens from given string
+		JSONTokener tokener = new JSONTokener(first_doc.toString());
+		
+		try {
+			// get the JSON root object
+			JSONObject root_obj = new JSONObject(tokener);
+			
+			// get the models array (is only one value but of type array)
+			JSONArray models_array = root_obj.getJSONArray("models");			
+			
+			// get the links array from the result
+			JSONArray links_array = models_array.getJSONObject(0).getJSONArray("links");
+			
+			//////////////////////////////////////////////////////////
+			// loop through all the links to check for the given link name
+			for(int i = 0; i < links_array.length(); i++)
+			{
+				// get the given JSON object from the array
+				JSONObject curr_link_obj = links_array.getJSONObject(i);
+				
+				// check if the current links is the one we are looking for
+				if(curr_link_obj.getString("name").equals(link_name))
+				{
+					// get the position from the array
+					JSONObject json_pos = curr_link_obj.getJSONObject("pos");
+					
+					// get the orientation from the array
+					JSONObject json_rot = curr_link_obj.getJSONObject("rot");
+					
+					// set the pose
+					pose[0] = json_pos.getDouble("x");
+					pose[1] = json_pos.getDouble("y");
+					pose[2] = json_pos.getDouble("z");
+					
+					pose[3] = json_rot.getDouble("x");
+					pose[4] = json_rot.getDouble("y");
+					pose[5] = json_rot.getDouble("z");
+					
+					return pose;
+				};
+			}
+
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}	
+		
+		return null;
+	}
+	
+	
+	/**
+	 * 
 	 * @param model_name
 	 * @param timestamp
 	 * @return
@@ -402,7 +489,7 @@ public class MongoPrologInterface {
 			System.out.println("IJavaDB: timestamp out of bounds");
 			return null;
 		}
-		
+
 		// extracts characters and tokens from given string
 		JSONTokener tokener = new JSONTokener(first_doc.toString());
 		
@@ -523,9 +610,14 @@ public class MongoPrologInterface {
 	 * 
 	 * @param args
 	 */
+
 	public static void main(String[] args) 
 	{				
-		MongoPrologInterface mpi = new MongoPrologInterface();
+		MongoPrologInterface mpi = new MongoPrologInterface(3);
+		
+//		System.out.println(mpi.getModelBoundingBox("mug", 15205000000L)[5]);
+		
+		mpi.getLinkPose("spatula_head_link", 15205000000L);
 		
 //		System.out.println(mpi.getModelBoundingBox("mug", 25205000000L)[5]);
 //		System.out.println(mpi.getModelPose("mug", 25411001000L)[5]);

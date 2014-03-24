@@ -4,7 +4,7 @@
 
 :- module(mongo_prolog,
 	[
-		create_interface/1,
+		create_interface/2,
 		set_world_state/2,
 		get_models/2,
 		get_links/3,
@@ -19,12 +19,11 @@
 	
 :- use_module(library('jpl')).
 
-:- use_module(library(pce)).
 
 % create_interface(-IJavaDB).
 %% instantiates the mongo - java - prolog interface object
-create_interface(IJavaDB) :-		
-	jpl_new('mongo_prolog.MongoPrologInterface', [], IJavaDB).
+create_interface(CollectionNr, IJavaDB) :-		
+	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], IJavaDB).
 	
 % set_world_state(+IJavaDB, +Timestamp).
 %% set all entities at given timestamp
@@ -98,11 +97,12 @@ add_model_clauses(IJavaDB, [H_Model|T_Model]) :-
 %% set world clauses by initializing java interface object,
 %% setting the world entities in the given timestamp
 %% assert all mdoels, links, collisions and their relations
-add_world_clauses :-
-	create_interface(IJavaDB),
+add_world_clauses(CollectionNr) :-
+	create_interface(CollectionNr, IJavaDB),
 %	set_world_state(IJavaDB, Timestamp),
 	get_models(IJavaDB, Model_Arr),
-	add_model_clauses(IJavaDB, Model_Arr).
+	add_model_clauses(IJavaDB, Model_Arr),
+	!.
 
 		
 	
@@ -114,99 +114,26 @@ get_contacts(IJavaDB, Model, Link, Collision, Contact_Arr) :-
 	jpl_array_to_list(Contacts, Contact_Arr).
 
 
-% get_model_pose(+Model, +Timestamp, -Pose_Arr).
+% get_model_pose(+CollectionNr, +Model, +Timestamp, -Pose_Arr).
 %% returns the pose of the given model as an array of double [X,Y,Z,R,P,Y]
-get_model_pose(Model, Timestamp,  Pose_Arr) :-
-	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
+get_model_pose(CollectionNr, Model, Timestamp, Pose_Arr) :-
+	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], DB),
 	jpl_call(DB, 'getModelPose', [Model, Timestamp], Pose),
 	jpl_array_to_list(Pose, Pose_Arr).
 
 
-% get_model_bb(+Model, +Timestamp, -BB_Arr).
+% get_model_bb(+CollectionNr, +Model, +Timestamp, -BB_Arr).
 %% returns the bounding box of the given model as an array of double [minX,minY,minZ,maxX,maxY,maxZ]
-get_model_bb(Model, Timestamp, BB_Arr) :-
-	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
+get_model_bb(CollectionN, rModel, Timestamp, BB_Arr) :-
+	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], DB),
 	jpl_call(DB, 'getModelBoundingBox', [Model, Timestamp], BB),
 	jpl_array_to_list(BB, BB_Arr).
 
 
-% get_model_contacts(+Model, +Timestamp, -Contacts)
-%% returns the contacts as collisions of the given model
-get_model_contacts(Model, Timestamp, Contacts_Arr) :-	
-	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
-	jpl_call(DB, 'getModelContactNames', [Model, Timestamp], Contacts),
-	jpl_array_to_list(Contacts, Contacts_Arr).
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% TESTING..
-
-
-get_model_of_collision(Model,Collision) :-
-	parent_of(X, Collision),
-	parent_of(Model,X). 
-
-
-%gen_model_arr([]).
-
-%gen_model_arr([H_Arr|T_Arr]) :-
-	
-
-
-iterate_coll_arr([]).
-
-iterate_coll_arr([H_Coll|T_Coll]) :-
-	get_model_of_collision(Model,H_Coll),
-%	append(Model,Models_Arr,Models_Arr),
-	write(Model),
-	iterate_coll_arr(T_Coll).
-
-get_contacts_models(Model, Timestamp, Models_Arr) :-
-	get_model_contacts(Model, Timestamp, Contacts_Arr),
-	iterate_coll_arr(Contacts_Arr, Models_Arr).
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+% get_link_pose(+CollectionNr, +Link, +Timestamp, -Pose_Arr).
+%% returns the pose of the given link as an array of double [X,Y,Z,R,P,Y]
+get_link_pose(CollectionNr, Link, Timestamp, Pose_Arr) :-
+	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], DB),
+	jpl_call(DB, 'getLinkPose', [Link, Timestamp], Pose),
+	jpl_array_to_list(Pose, Pose_Arr).
 	
