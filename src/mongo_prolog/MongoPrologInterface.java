@@ -34,7 +34,6 @@ public class MongoPrologInterface {
 	 * MongoPrologInterface constructor
 	 * @param collection 
 	 */
-	//////////////////////////////////////////////////////////
 	public MongoPrologInterface(int collection) {		
 		// echo for prolog
 		System.out.println("IJavaDB: " + "calling MongoPrologInterface constructor, setting up connection to database..");
@@ -371,6 +370,7 @@ public class MongoPrologInterface {
 	}
 	
 	
+
 	/**
 	 * 
 	 * @param link_name
@@ -622,7 +622,7 @@ public class MongoPrologInterface {
 //		System.out.println(mpi.getModelBoundingBox("mug", 25205000000L)[5]);
 //		System.out.println(mpi.getModelPose("mug", 25411001000L)[5]);
 		
-		mpi.getModelContactNames("spatula", 26411000000L);
+//		mpi.getModelContactNames("spatula", 26411000000L);
 		
 //		World world = mpi.getWorldState(25205000000L);
 		
