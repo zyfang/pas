@@ -605,19 +605,87 @@ public class MongoPrologInterface {
 		return contacts_list.toArray(new String[contacts_list.size()]);
 	}
 	
+	/**
+	 * TODO! HARDCODED INTERVALS 
+	 */	
+	public long getFlipStart(int CollectionNr)
+	{
+		if (CollectionNr == 1)
+			return 26267000000L;
+		else if(CollectionNr == 2)
+			return 19643000000L;
+		else if(CollectionNr == 3)
+			return 31046000000L;
+		else if(CollectionNr == 4)
+			return 27713000000L;
+		else if(CollectionNr == 5)
+			return 17235000000L;
+		
+		else return 0;
+	}
+	
+	public long getFlipEnd(int CollectionNr)
+	{
+		if (CollectionNr == 1)
+			return 33370000000L;
+		else if(CollectionNr == 2)
+			return 23338000000L;
+		else if(CollectionNr == 3)
+			return 38742000000L;
+		else if(CollectionNr == 4)
+			return 35873000000L;
+		else if(CollectionNr == 5)
+			return 21598000000L;
+		
+		else return 0;
+	}
+	
+	
+	public long getMixLeavingContainer(int CollectionNr)
+	{
+		if (CollectionNr == 1)
+			return 26267000000L;
+		else if(CollectionNr == 2)
+			return 19643000000L;
+		else if(CollectionNr == 3)
+			return 31046000000L;
+		else if(CollectionNr == 4)
+			return 27713000000L;
+		else if(CollectionNr == 5)
+			return 17235000000L;
+		
+		else return 0;
+	}
+	
+	public long getMixOnOven(int CollectionNr)
+	{
+		if (CollectionNr == 1)
+			return 33370000000L;
+		else if(CollectionNr == 2)
+			return 23338000000L;
+		else if(CollectionNr == 3)
+			return 38742000000L;
+		else if(CollectionNr == 4)
+			return 35873000000L;
+		else if(CollectionNr == 5)
+			return 21598000000L;
+		
+		else return 0;
+	}
+	
+	
 	
 	/**
 	 * 
 	 * @param args
 	 */
-
 	public static void main(String[] args) 
 	{				
 		MongoPrologInterface mpi = new MongoPrologInterface(3);
 		
 //		System.out.println(mpi.getModelBoundingBox("mug", 15205000000L)[5]);
 		
-		mpi.getLinkPose("spatula_head_link", 15205000000L);
+		mpi.getLinkPose("spatula_head_link", 15205001000L);
 		
 //		System.out.println(mpi.getModelBoundingBox("mug", 25205000000L)[5]);
 //		System.out.println(mpi.getModelPose("mug", 25411001000L)[5]);

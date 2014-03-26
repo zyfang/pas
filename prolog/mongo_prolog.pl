@@ -12,11 +12,16 @@
 		add_collision_clauses/2,
 		add_link_clauses/3,
 		add_model_clauses/2,
-		add_world_clauses/0,
+		add_world_clauses/1,
 		get_contacts/5,
-		get_model_pose/3	
+		get_model_pose/4,
+		get_model_bb/4,
+		get_link_pose/4,
+		spatula_contact_pancake/2,
+		occurs/3
 	]).
 	
+
 :- use_module(library('jpl')).
 
 
@@ -124,7 +129,7 @@ get_model_pose(CollectionNr, Model, Timestamp, Pose_Arr) :-
 
 % get_model_bb(+CollectionNr, +Model, +Timestamp, -BB_Arr).
 %% returns the bounding box of the given model as an array of double [minX,minY,minZ,maxX,maxY,maxZ]
-get_model_bb(CollectionN, rModel, Timestamp, BB_Arr) :-
+get_model_bb(CollectionNr, Model, Timestamp, BB_Arr) :-
 	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], DB),
 	jpl_call(DB, 'getModelBoundingBox', [Model, Timestamp], BB),
 	jpl_array_to_list(BB, BB_Arr).
@@ -136,4 +141,104 @@ get_link_pose(CollectionNr, Link, Timestamp, Pose_Arr) :-
 	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], DB),
 	jpl_call(DB, 'getLinkPose', [Link, Timestamp], Pose),
 	jpl_array_to_list(Pose, Pose_Arr).
+
+
+%%%%%%%%%%%%%%%%% Experminental %%%%%%%%%%%%
+
+%% get_flipping_interval(+CollectionNr, -Interval_Arr)
+%get_flipping_interval(CollectionNr, Interval_Arr, Start, End) :-
+%	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], DB),
+%	jpl_call(DB, 'getFlippingInterval', [], Interval),
+%	jpl_array_to_list(Interval, Interval_Arr).
+	
+
+%:- meta_predicate meta_pred(0,+,+).
+
+%meta_pred(Term, _Arg) :- 
+%	format ('Term: ~w',[Term]).
+
+%holds(X) :- X.
+
+%flipping(Start,End) :- t1(Start), t2(End).
+
+%pour(liquid_spheres,mug,pacake_maker).
+
+%action(pour).
+
+%occurs(action(P), 1).
+
+%occurs(action(pour), 2).
+
+object_type(liquid_spheres, mix).
+object_type(mug, container).
+object_type(pancake_maker, oven).
+
+%%%% flip
+spatula_contact_pancake(CollectionNr, T) :-	
+	jpl_new('mongo_prolog.MongoPrologInterface',[CollectionNr], DB),
+	jpl_call(DB, 'getFlipStart', [CollectionNr], T).
+
+lost_spatula_contact_pancake(CollectionNr, T) :-
+	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], DB),
+	jpl_call(DB, 'getFlipEnd', [CollectionNr], T).
+
+%%%% pour	
+mix_leaves_container(CollectionNr, T) :-	
+	jpl_new('mongo_prolog.MongoPrologInterface',[CollectionNr], DB),
+	jpl_call(DB, 'getMixLeavingContainer', [CollectionNr], T).
+
+mix_on_oven(CollectionNr, T) :-
+	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], DB),
+	jpl_call(DB, 'getMixOnOven', [CollectionNr], T).
+
+
+occurs(pour(Mix,Container,Oven),CollectionNr,T1,T2) :- 
+	object_type(Mix, mix),
+	object_type(Mug, container),
+	object_type(Oven, oven),
+	mix_leaves_container(CollectionNr, T1),
+	mix_on_oven(CollectionNr, T2).
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	
