@@ -17,8 +17,7 @@
 		get_model_pose/4,
 		get_model_bb/4,
 		get_link_pose/4,
-		spatula_contact_pancake/2,
-		occurs/3
+		get_event_timestamps/3
 	]).
 	
 
@@ -143,6 +142,39 @@ get_link_pose(CollectionNr, Link, Timestamp, Pose_Arr) :-
 	jpl_array_to_list(Pose, Pose_Arr).
 
 
+%%%%%%%%%%%%%%%%% Robohow %%%%%%%%%%%%%%%%%%
+
+object_event_type(mug, pour).
+object_event_type(spatula, flip).
+
+object_type(mug, container).
+
+
+
+get_event_timestamps(Event, StT, EndT) :-
+	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'getEventTimestamps', [Event], Timestamps),
+	jpl_array_to_list(Timestamps, Timestamps_Arr),
+	[StT,EndT] = Timestamps_Arr.
+
+
+hand_manipulates_object(Obj, StT, EndT) :-
+	object_event_type(Obj, Event),
+	get_event_timestamps(Event, StT, EndT).
+
+
+
+get_particles_leaving_container(PT_KeyValuePair) :-
+	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'getParticlesLeavingContainer', [], PT_HashMap),
+	jpl_map_element(PT_HashMap, PT_KeyValuePair).
+	
+
+
+
+%hand_manipulates_object
+
+
 %%%%%%%%%%%%%%%%% Experminental %%%%%%%%%%%%
 
 %% get_flipping_interval(+CollectionNr, -Interval_Arr)
@@ -169,7 +201,7 @@ get_link_pose(CollectionNr, Link, Timestamp, Pose_Arr) :-
 
 %occurs(action(pour), 2).
 
-object_type(liquid_spheres, mix).
+/*object_type(liquid_spheres, mix).
 object_type(mug, container).
 object_type(pancake_maker, oven).
 
@@ -197,7 +229,7 @@ occurs(pour(Mix,Container,Oven),CollectionNr,T1,T2) :-
 	object_type(Mug, container),
 	object_type(Oven, oven),
 	mix_leaves_container(CollectionNr, T1),
-	mix_on_oven(CollectionNr, T2).
+	mix_on_oven(CollectionNr, T2).*/
 	
 
 

@@ -8,7 +8,6 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -18,6 +17,7 @@ import org.json.JSONTokener;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 
@@ -47,6 +47,28 @@ public class MongoPrologInterface {
 
 			// get the given collection from the DB
 			this.coll = this.db.getCollection("collection_X" + collection);
+
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/** TODO, temp constructor for new database with events
+	 * 
+	 */
+	public MongoPrologInterface() {		
+		// echo for prolog
+		System.out.println("[TODO]IJavaDB: " + "calling MongoPrologInterface NEW constructor, setting up connection to database (with events)..");
+		
+		try {
+			// create a new DB client
+			this.mongoClient = new MongoClient( "localhost" , 27017 );
+
+			// get the given DB
+			this.db = mongoClient.getDB("sim_db");
+
+			// get the given collection from the DB
+			this.coll = this.db.getCollection("event_coll_X");
 
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
@@ -377,7 +399,6 @@ public class MongoPrologInterface {
 	 * @param timestamp
 	 * @return
 	 */
-	//////////////////////////////////////////////////////////
 	public double[] getLinkPose(String link_name, long timestamp)
 	{
 		// echo for prolog
@@ -606,6 +627,159 @@ public class MongoPrologInterface {
 	}
 	
 	/**
+	 * 
+	 * @param _event
+	 * @return
+	 */
+	public long[] getEventTimestamps(String _event){
+		// echo for prolog
+		System.out.println("IJavaDB: getting timestamps for " + _event + " event");
+		
+		// start and end timestamp
+		long[] timestamps = new long[2];
+		
+		// query used for MongoDB
+		BasicDBObject query;
+		
+		// TODO make it nicer
+		if (_event.equals("pour"))
+		{
+			// set the START timestamp
+			 query = new BasicDBObject("events.pour","StartPouring");	
+
+			// find the first document for the query (it should only be one)
+			DBObject start_doc = coll.findOne(query);
+
+			// extracts characters and tokens from given string
+			JSONTokener tokener = new JSONTokener(start_doc.toString());
+
+			try {
+				// get the JSON root object
+				JSONObject root_obj = new JSONObject(tokener);	
+				
+				// set the start timestamp
+				timestamps[0] = root_obj.getLong("timestamp");
+				
+			}catch (JSONException e) {
+				e.printStackTrace();
+			}	
+			
+			
+			// set the END timestamp
+			query = new BasicDBObject("events.pour","EndPouring");	
+			
+			// find the first document for the query (it should only be one)
+			DBObject end_doc = coll.findOne(query);
+
+			// extracts characters and tokens from given string
+			tokener = new JSONTokener(end_doc.toString());
+
+			try {
+				// get the JSON root object
+				JSONObject root_obj = new JSONObject(tokener);	
+				
+				// set the end timestamp
+				timestamps[1] = root_obj.getLong("timestamp");
+				
+			}catch (JSONException e) {
+				e.printStackTrace();
+			}	
+
+		}
+		else if (_event.equals("flip"))
+		{
+			// set the START timestamp
+			 query = new BasicDBObject("events.flip","StartFlipping");	
+
+			// find the first document for the query (it should only be one)
+			DBObject start_doc = coll.findOne(query);
+
+			// extracts characters and tokens from given string
+			JSONTokener tokener = new JSONTokener(start_doc.toString());
+
+			try {
+				// get the JSON root object
+				JSONObject root_obj = new JSONObject(tokener);	
+				
+				// set the start timestamp
+				timestamps[0] = root_obj.getLong("timestamp");
+				
+			}catch (JSONException e) {
+				e.printStackTrace();
+			}	
+			
+			
+			// set the END timestamp
+			query = new BasicDBObject("events.flip","EndFlipping");	
+			
+			// find the first document for the query (it should only be one)
+			DBObject end_doc = coll.findOne(query);
+
+			// extracts characters and tokens from given string
+			tokener = new JSONTokener(end_doc.toString());
+
+			try {
+				// get the JSON root object
+				JSONObject root_obj = new JSONObject(tokener);	
+				
+				// set the end timestamp
+				timestamps[1] = root_obj.getLong("timestamp");
+				
+			}catch (JSONException e) {
+				e.printStackTrace();
+			}	
+
+		}		
+		return timestamps;
+	}
+	
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public HashMap<String, String> getParticlesLeavingContainer()
+	{
+		// echo for prolog
+		System.out.println("IJavaDB: getting timestamps for particle leaves container event..");
+		
+		// store the particle - timestamp
+		HashMap<String, String> particle_map = new HashMap<String, String>();
+
+		// query used for MongoDB
+		BasicDBObject query = new BasicDBObject("events.leaves_container", new BasicDBObject("$exists", "true"));
+
+		BasicDBObject fields = new BasicDBObject("events", 1);
+		fields.append("timestamp", 1);
+
+		// cursor for the returned values
+		DBCursor cursor = coll.find(query, fields);
+
+		// loop through the cursor to get all values
+		try {
+			while (cursor.hasNext()){				
+
+				// extracts characters and tokens from given string
+				JSONTokener tokener = new JSONTokener(cursor.next().toString());
+
+				// get the JSON root object
+				JSONObject root_obj = new JSONObject(tokener);
+
+				// add values to HashMap, particle collision name - timestamp 
+				particle_map.put( root_obj.getJSONObject("events").getString("leaves_container"),String.valueOf(root_obj.getLong("timestamp")));
+
+			}
+		} catch (JSONException e) {
+			e.printStackTrace();
+		} finally{
+			cursor.close();
+		}
+
+		return particle_map;
+	}
+	
+	
+	/**
 	 * TODO! HARDCODED INTERVALS 
 	 */	
 	public long getFlipStart(int CollectionNr)
@@ -639,8 +813,7 @@ public class MongoPrologInterface {
 		
 		else return 0;
 	}
-	
-	
+		
 	public long getMixLeavingContainer(int CollectionNr)
 	{
 		if (CollectionNr == 1)
@@ -681,11 +854,17 @@ public class MongoPrologInterface {
 	 */
 	public static void main(String[] args) 
 	{				
-		MongoPrologInterface mpi = new MongoPrologInterface(3);
+//		MongoPrologInterface mpi = new MongoPrologInterface(3);
+		MongoPrologInterface mpi2 = new MongoPrologInterface();
+		
+//		System.out.println(mpi2.getEventTimestamps("flip")[0]);
+		
+		System.out.println(mpi2.getParticlesLeavingContainer());
+		
 		
 //		System.out.println(mpi.getModelBoundingBox("mug", 15205000000L)[5]);
 		
-		mpi.getLinkPose("spatula_head_link", 15205001000L);
+//		mpi.getLinkPose("spatula_head_link", 15205001000L);
 		
 //		System.out.println(mpi.getModelBoundingBox("mug", 25205000000L)[5]);
 //		System.out.println(mpi.getModelPose("mug", 25411001000L)[5]);
