@@ -8,11 +8,16 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 set(JAVA_OUTPUT_DIR ${PROJECT_SOURCE_DIR}/bin)
 
+add_classpath(${PROJECT_SOURCE_DIR}/bin)
+add_runtime_classpath(${PROJECT_SOURCE_DIR}/bin)
+
 add_classpath(${PROJECT_SOURCE_DIR}/lib/mongo-java-driver-2.11.3.jar)
 add_runtime_classpath(${PROJECT_SOURCE_DIR}/lib/mongo-java-driver-2.11.3.jar)
 
 add_classpath(${PROJECT_SOURCE_DIR}/lib/java-json.jar)
 add_runtime_classpath(${PROJECT_SOURCE_DIR}/lib/java-json.jar)
+
+
 
 
 add_java_source_dir(${PROJECT_SOURCE_DIR}/src)

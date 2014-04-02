@@ -12,6 +12,8 @@
   <depend package="rosjava_jni"/>
   <depend package="jpl"/>
   <depend package="knowrob_common"/>
+  <depend package="knowrob_cram"/>
+  <depend package="visualization_msgs"/>
 
   <export>
     <java classpath="${prefix}/bin:${prefix}/lib/mongo-java-driver-2.11.3.jar:${prefix}/lib/java-json.jar"/>

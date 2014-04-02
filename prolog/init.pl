@@ -17,7 +17,7 @@
 
 :- register_ros_package(knowrob_common).
 :- register_ros_package(mongo_prolog).
-
+:- register_ros_package(knowrob_cram).
 
 :- use_module(library(mongo_prolog)).
 :- use_module(library(xpce_ex)).

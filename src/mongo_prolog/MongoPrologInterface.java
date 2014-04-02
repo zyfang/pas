@@ -8,6 +8,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -21,14 +22,49 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 
+import ros.NodeHandle;
+import ros.Publisher;
+import ros.Ros;
+import ros.RosException;
+import ros.communication.Duration;
+import ros.communication.Time;
+import ros.pkg.geometry_msgs.msg.Point;
+import ros.pkg.geometry_msgs.msg.Quaternion;
+import ros.pkg.std_msgs.msg.ColorRGBA;
+import ros.pkg.visualization_msgs.msg.Marker;
+
 public class MongoPrologInterface {
 
 	private static final long A_TIMESTAMP = 0L;
+	
+	static Ros ros;
+	public static NodeHandle n;
+	Thread markerPublisher;
+	
+	/**
+	 * Store the markers to be published
+	 */
+	protected List<Marker> markers;
+	
+	/**
+	 * Counter for marker IDs
+	 */
+	private static int id = 0;
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	private MongoClient mongoClient;
 	private DB db;
 	private DBCollection coll;
 	private World world;
+	
 
 	/**
 	 * MongoPrologInterface constructor
@@ -36,7 +72,7 @@ public class MongoPrologInterface {
 	 */
 	public MongoPrologInterface(int collection) {		
 		// echo for prolog
-		System.out.println("IJavaDB: " + "calling MongoPrologInterface constructor, setting up connection to database..");
+//		System.out.println("IJavaDB: " + "calling MongoPrologInterface constructor, setting up connection to database..");
 		
 		try {
 			// create a new DB client
@@ -58,7 +94,10 @@ public class MongoPrologInterface {
 	 */
 	public MongoPrologInterface() {		
 		// echo for prolog
-		System.out.println("[TODO]IJavaDB: " + "calling MongoPrologInterface NEW constructor, setting up connection to database (with events)..");
+//		System.out.println("[TODO]IJavaDB: " + "calling MongoPrologInterface NEW constructor, setting up connection to database (with events)..");
+		
+		// init viz markers
+		markers = new ArrayList<Marker>();
 		
 		try {
 			// create a new DB client
@@ -82,7 +121,7 @@ public class MongoPrologInterface {
 	public void setWorldState(long timestamp){
 		
 		// echo for prolog
-		System.out.println("IJavaDB: " + "Asserting world state from timestamp: " + timestamp + " :");
+//		System.out.println("IJavaDB: " + "Asserting world state from timestamp: " + timestamp + " :");
 		
 		// local models map
 		World local_world = new World();		
@@ -324,7 +363,8 @@ public class MongoPrologInterface {
 	
 	
 	/**
-	 * 
+	 * TODO make sure timestamps are organized chronologically, otherwise don't use $gte
+	 * TODO merge events, otherwise it might take a timestamp without models
 	 * @param model_name
 	 * @param timestamp
 	 * @return
@@ -332,7 +372,7 @@ public class MongoPrologInterface {
 	public double[] getModelPose(String model_name, long timestamp)
 	{
 		// echo for prolog
-		System.out.println("IJavaDB: getting models '" + model_name + "' pose at timestamp: " + timestamp);
+//		System.out.println("IJavaDB: getting models '" + model_name + "' pose at timestamp: " + timestamp);
 		
 		// pose, X Y Z R P Y
 		double[] pose = new double[6];
@@ -340,7 +380,10 @@ public class MongoPrologInterface {
 		//long timestamp = A_TIMESTAMP;
 		
 		// query for getting the document at the given closest greater or equal than the timestamp
-		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", timestamp));
+		// TODO cannot use $gte, since the timestamps are not organized chronologically anymore
+//		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", timestamp));
+		BasicDBObject query = new BasicDBObject("timestamp", timestamp);
+
 	    
 		// fields for projecting only the pose of the given model name
 		BasicDBObject fields = new BasicDBObject("_id", 0);
@@ -354,7 +397,7 @@ public class MongoPrologInterface {
 		// check that the query returned a document
 		if(first_doc == null)
 		{
-			System.out.println("IJavaDB: timestamp out of bounds");
+//			System.out.println("IJavaDB: timestamp out of bounds");
 			return null;
 		}
 		
@@ -402,7 +445,7 @@ public class MongoPrologInterface {
 	public double[] getLinkPose(String link_name, long timestamp)
 	{
 		// echo for prolog
-		System.out.println("IJavaDB: " + "getting link '" + link_name + "' pose at timestamp: " + timestamp);
+//		System.out.println("IJavaDB: " + "getting link '" + link_name + "' pose at timestamp: " + timestamp);
 		
 		// pose, X Y Z R P Y
 		double[] pose = new double[6];
@@ -424,7 +467,8 @@ public class MongoPrologInterface {
 		// check that the query returned a document
 		if(first_doc == null)
 		{
-			System.out.println("IJavaDB: timestamp out of bounds");
+			// echo for prolog
+//			System.out.println("IJavaDB: timestamp out of bounds");
 			return null;
 		}
 		
@@ -487,7 +531,7 @@ public class MongoPrologInterface {
 	public double[] getModelBoundingBox(String model_name, long timestamp)
 	{
 		// echo for prolog
-		System.out.println("IJavaDB: " + "calling  '" + model_name + "' boundingbox at timestamp: " + timestamp);
+//		System.out.println("IJavaDB: " + "calling  '" + model_name + "' boundingbox at timestamp: " + timestamp);
 		
 		// BB min XYZ, max XYZ
 		double[] bounding_box = new double[6];
@@ -507,7 +551,8 @@ public class MongoPrologInterface {
 		// check that the query returned a document
 		if(first_doc == null)
 		{
-			System.out.println("IJavaDB: timestamp out of bounds");
+			// echo for prolog
+//			System.out.println("IJavaDB: timestamp out of bounds");
 			return null;
 		}
 
@@ -556,7 +601,7 @@ public class MongoPrologInterface {
 	 */
 	public String[] getModelContactNames(String model_name, long timestamp){
 		// echo for prolog
-		System.out.println("IJavaDB: " + "getting contacts for  '" + model_name +"' .." );
+//		System.out.println("IJavaDB: " + "getting contacts for  '" + model_name +"' .." );
 		
 		// needs a dynamic list since we do not no the exact nr of contacts
 		List<String> contacts_list = new ArrayList<String>(); 
@@ -575,7 +620,8 @@ public class MongoPrologInterface {
 		// check that the query returned a document
 		if(first_doc == null)
 		{
-			System.out.println("IJavaDB: timestamp out of bounds");
+			// echo for prolog
+//			System.out.println("IJavaDB: timestamp out of bounds");
 			return null;
 		}
 						
@@ -631,9 +677,9 @@ public class MongoPrologInterface {
 	 * @param _event
 	 * @return
 	 */
-	public long[] getEventTimestamps(String _event){
+	public long[] getManipulationEventTimestamps(String _event){
 		// echo for prolog
-		System.out.println("IJavaDB: getting timestamps for " + _event + " event");
+//		System.out.println("IJavaDB: getting timestamps for " + _event + " event");
 		
 		// start and end timestamp
 		long[] timestamps = new long[2];
@@ -732,16 +778,16 @@ public class MongoPrologInterface {
 		}		
 		return timestamps;
 	}
-	
+
 	
 	/**
-	 * 
+	 * TODO it returns string, since hashmap can only have objects as keys and values, and prolog only recognizes .String as primitive
 	 * @return
 	 */
 	public HashMap<String, String> getParticlesLeavingContainer()
 	{
 		// echo for prolog
-		System.out.println("IJavaDB: getting timestamps for particle leaves container event..");
+//		System.out.println("IJavaDB: getting timestamps for particle leaves container event..");
 		
 		// store the particle - timestamp
 		HashMap<String, String> particle_map = new HashMap<String, String>();
@@ -777,6 +823,266 @@ public class MongoPrologInterface {
 
 		return particle_map;
 	}
+	
+	
+	/**
+	 * 
+	 * @param obj_name
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public JSONArray getObjectTracjectory(String model_name, long start, long end)
+	{				
+		// query for getting the document between the given timestamp
+		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", start).append("$lte", end));
+	    
+		// fields for projecting only the pose of the given model name
+		BasicDBObject fields = new BasicDBObject("_id", 0);
+		fields.append("models", new BasicDBObject("$elemMatch", new BasicDBObject("name", model_name)));
+		fields.append("models.pos", 1);
+		fields.append("models.rot", 1);
+		fields.append("timestamp", 1);
+		
+		// find all the matching documents
+		DBCursor cursor = coll.find(query, fields);
+		
+		// tf trajectory array
+		JSONArray tf_traj_arr = new JSONArray();
+		
+		// loop through the found results
+		while (cursor.hasNext()){
+			
+			// tf json object
+			JSONObject tf_js = new JSONObject();			
+			// tf header
+			JSONObject tf_header_js = new JSONObject();
+			// the tf transformation
+			JSONObject tf_transform_js = new JSONObject();
+						
+			// get the current document
+			JSONTokener tokener = new JSONTokener(cursor.next().toString());
+
+			try {				
+				// get the JSON root object
+				JSONObject root_obj = new JSONObject(tokener);
+				
+				// get the current timestamp
+				long timestamp = root_obj.getLong("timestamp");
+				
+				// get the models array (it's only one value but of type array)
+				JSONArray models_array = root_obj.getJSONArray("models");
+
+				// get the position from the array
+				JSONObject json_pos = models_array.getJSONObject(0).getJSONObject("pos");
+
+				// get the orientation from the array
+				JSONObject json_rot = models_array.getJSONObject(0).getJSONObject("rot");
+				
+				// set the tf transf pose
+				tf_transform_js.put("translation", json_pos);
+				tf_transform_js.put("rotation", json_rot);
+				
+				tf_header_js.put("stamp", timestamp);
+				tf_header_js.put("frame_id", "/map");
+				
+				
+				tf_js.put("transform",tf_transform_js);
+				tf_js.put("header",tf_header_js);
+				tf_js.put("child_frame_id","/" + model_name);
+								
+				
+				tf_traj_arr.put(tf_js);
+				
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+			
+		}
+		
+		return tf_traj_arr;
+	}
+	
+	
+	
+	
+	/**
+	 * 
+	 * @param obj_name
+	 * @param start
+	 * @param end
+	 */
+	public void createTrajectory(String model_name, long start, long end)
+	{
+		// save every 20th step
+		int step = 0;
+		
+		initRos();
+		
+		markerPublisher = new Thread( new PublisherThread() );
+		
+		markerPublisher.start();
+		
+		
+		
+
+		ColorRGBA color = new ColorRGBA();
+		
+		color.r = 1;
+		color.g = 0;
+		color.b = 0;
+		color.a = 1;
+		
+		
+		// query for getting the document between the given timestamp
+		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", start).append("$lte", end));
+	    
+		// fields for projecting only the pose of the given model name
+		BasicDBObject fields = new BasicDBObject("_id", 0);
+		fields.append("models", new BasicDBObject("$elemMatch", new BasicDBObject("name", model_name)));
+		fields.append("models.pos", 1);
+		fields.append("models.rot", 1);
+		fields.append("timestamp", 1);
+		
+		// find all the matching documents
+		DBCursor cursor = coll.find(query, fields);
+		
+		// loop through the found results
+		while (cursor.hasNext()){
+						
+			// get the current document
+			JSONTokener tokener = new JSONTokener(cursor.next().toString());
+
+			try {	
+				
+				if (step == 10)
+				{
+
+					// get the JSON root object
+					JSONObject root_obj = new JSONObject(tokener);
+
+					// get the models array (it's only one value but of type array)
+					JSONArray models_array = root_obj.getJSONArray("models");
+
+					// get the position from the array
+					JSONObject json_pos = models_array.getJSONObject(0).getJSONObject("pos");
+
+
+					Marker m = createMarker(json_pos.getDouble("x"), json_pos.getDouble("y"), json_pos.getDouble("z"), 0.01, color, Marker.SPHERE);
+
+					markers.add(m);
+
+					step = 0;
+				}
+				
+				step++;
+				
+			} catch (JSONException e) {
+				//e.printStackTrace();
+			}
+			
+		}
+				
+	}
+	
+	
+	public Marker createMarker(double posX, double posY, double posZ, double scale, ColorRGBA color, int markerType)
+	{
+		Marker m = new Marker();
+		
+		m.type = markerType;
+		
+		m.scale.x = scale;
+		m.scale.y = scale;
+		m.scale.z = scale;		
+
+		m.color = color;
+		
+		m.header.frame_id = "/map";
+		m.header.stamp = Time.now();
+		m.ns = "knowrob_vis";
+		m.id = id++;
+		
+		m.action = Marker.ADD;
+		m.lifetime = new Duration();
+		
+		m.pose.orientation = new Quaternion();
+		
+		m.pose.position.x = posX;
+		m.pose.position.y = posY;
+		m.pose.position.z = posZ;
+		
+		return m;
+
+	}
+	
+	
+//	public void startVisualization(){
+//		// local method, Thread-safe ROS initialization
+//		initRos();
+//
+//		markerPublisher = new Thread( new PublisherThread() );
+//		
+//		markerPublisher.start();
+//	}
+	
+	
+	/**
+	 * Thread-safe ROS initialization
+	 */
+	protected static void initRos() {
+		
+		ros = Ros.getInstance();
+
+
+		if(!Ros.getInstance().isInitialized()) {
+			ros.init("knowrob_vis");
+		}
+		n = ros.createNodeHandle();
+		
+		System.out.println("ros init check");
+		
+	}
+	
+	/**
+	 * Thread that publishes the current state of the marker set
+	 * to the visualization_marker topic.
+	 *
+	 */
+	public class PublisherThread implements Runnable {
+		
+		@Override
+		public void run() {
+
+			try {
+				
+				Publisher<Marker> pub = n.advertise("visualization_marker", new Marker(), 100);				
+
+				while(n.isValid()) {					
+					
+					
+					synchronized (markers) 
+					{
+						for(int i = 0; i < markers.size(); i++)
+						{
+							pub.publish(markers.get(i));
+						}
+					}
+					n.spinOnce();
+					Thread.sleep(50);
+				}		
+
+				pub.shutdown();
+
+			} catch (RosException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}	
+
+	}
+	
 	
 	
 	/**
@@ -857,10 +1163,15 @@ public class MongoPrologInterface {
 //		MongoPrologInterface mpi = new MongoPrologInterface(3);
 		MongoPrologInterface mpi2 = new MongoPrologInterface();
 		
+//		mpi2.drawTrajectory("mug", 0, 1234253235);
+		
+//		mpi2.getModelPose("mug", 15232000000L);
+		
 //		System.out.println(mpi2.getEventTimestamps("flip")[0]);
 		
-		System.out.println(mpi2.getParticlesLeavingContainer());
+//		System.out.println(mpi2.getParticlesLeavingContainer());
 		
+//		System.out.println(mpi2.getObjectTracjectory("mug",0,300L));
 		
 //		System.out.println(mpi.getModelBoundingBox("mug", 15205000000L)[5]);
 		

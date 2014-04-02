@@ -1,3 +1,4 @@
 <launch>
-	<node name="json_prolog" pkg="rosprolog" type="run_with_prolog_env" args="mongo_prolog $(find json_prolog)/bin/json_prolog" />
+	<node name="game_log_server" pkg="rosprolog" type="run_with_prolog_env" args="mongo_prolog $(find json_prolog)/bin/json_prolog" respawn="true"
+/>
 </launch>

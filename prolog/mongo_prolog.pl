@@ -15,9 +15,10 @@
 		add_world_clauses/1,
 		get_contacts/5,
 		get_model_pose/4,
+		get_model_pose/3,
 		get_model_bb/4,
 		get_link_pose/4,
-		get_event_timestamps/3
+		get_manipulation_event_timestamps/3
 	]).
 	
 
@@ -142,68 +143,7 @@ get_link_pose(CollectionNr, Link, Timestamp, Pose_Arr) :-
 	jpl_array_to_list(Pose, Pose_Arr).
 
 
-%%%%%%%%%%%%%%%%% Robohow %%%%%%%%%%%%%%%%%%
-
-object_event_type(mug, pour).
-object_event_type(spatula, flip).
-
-object_type(mug, container).
-
-
-
-get_event_timestamps(Event, StT, EndT) :-
-	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
-	jpl_call(DB, 'getEventTimestamps', [Event], Timestamps),
-	jpl_array_to_list(Timestamps, Timestamps_Arr),
-	[StT,EndT] = Timestamps_Arr.
-
-
-hand_manipulates_object(Obj, StT, EndT) :-
-	object_event_type(Obj, Event),
-	get_event_timestamps(Event, StT, EndT).
-
-
-
-get_particles_leaving_container(PT_KeyValuePair) :-
-	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
-	jpl_call(DB, 'getParticlesLeavingContainer', [], PT_HashMap),
-	jpl_map_element(PT_HashMap, PT_KeyValuePair).
-	
-
-
-
-%hand_manipulates_object
-
-
-%%%%%%%%%%%%%%%%% Experminental %%%%%%%%%%%%
-
-%% get_flipping_interval(+CollectionNr, -Interval_Arr)
-%get_flipping_interval(CollectionNr, Interval_Arr, Start, End) :-
-%	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], DB),
-%	jpl_call(DB, 'getFlippingInterval', [], Interval),
-%	jpl_array_to_list(Interval, Interval_Arr).
-	
-
-%:- meta_predicate meta_pred(0,+,+).
-
-%meta_pred(Term, _Arg) :- 
-%	format ('Term: ~w',[Term]).
-
-%holds(X) :- X.
-
-%flipping(Start,End) :- t1(Start), t2(End).
-
-%pour(liquid_spheres,mug,pacake_maker).
-
-%action(pour).
-
-%occurs(action(P), 1).
-
-%occurs(action(pour), 2).
-
-/*object_type(liquid_spheres, mix).
-object_type(mug, container).
-object_type(pancake_maker, oven).
+%%%%%%%%%%%%%%%%%%%% HARDCODED STUFF IN JAVA %%%%%%%%%%%%%%%%%%%%%
 
 %%%% flip
 spatula_contact_pancake(CollectionNr, T) :-	
@@ -214,23 +154,96 @@ lost_spatula_contact_pancake(CollectionNr, T) :-
 	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], DB),
 	jpl_call(DB, 'getFlipEnd', [CollectionNr], T).
 
-%%%% pour	
-mix_leaves_container(CollectionNr, T) :-	
-	jpl_new('mongo_prolog.MongoPrologInterface',[CollectionNr], DB),
-	jpl_call(DB, 'getMixLeavingContainer', [CollectionNr], T).
 
-mix_on_oven(CollectionNr, T) :-
-	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], DB),
-	jpl_call(DB, 'getMixOnOven', [CollectionNr], T).
+%%%%%%%%%%%%%%%%% Robohow %%%%%%%%%%%%%%%%%%
+
+% from the DB with events
+% returns the pose of the given model as an array of double [X,Y,Z,R,P,Y]
+get_model_pose(Model, Timestamp, Pose_Arr) :-
+	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'getModelPose', [Model, Timestamp], Pose),
+	jpl_array_to_list(Pose, Pose_Arr).
 
 
-occurs(pour(Mix,Container,Oven),CollectionNr,T1,T2) :- 
-	object_type(Mix, mix),
-	object_type(Mug, container),
-	object_type(Oven, oven),
-	mix_leaves_container(CollectionNr, T1),
-	mix_on_oven(CollectionNr, T2).*/
+object_event_type(mug, pour).
+object_event_type(spatula, flip).
+
+object_type(mug, container).
+
+
+
+get_manipulation_event_timestamps(Event, StT, EndT) :-
+	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'getManipulationEventTimestamps', [Event], Timestamps),
+	jpl_array_to_list(Timestamps, Timestamps_Arr),
+	[StT,EndT] = Timestamps_Arr.
+
+
+hand_manipulates_object(Obj, StT, EndT) :-
+	object_event_type(Obj, Event),
+	get_manipulation_event_timestamps(Event, StT, EndT).
+
+
+
+get_particles_leaving_container(PT_Arr) :-
+	jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'getParticlesLeavingContainer', [], PT_HashMap),
+	findall(PT_KeyValuePair, jpl_map_element(PT_HashMap, PT_KeyValuePair), PT_Arr).
+
 	
+pour(Stuff, Cont, ActSt, ActEnd, EvSt, EvEnd) :-
+	object_type(Cont, container),
+	hand_manipulates_object(Cont, ActSt, ActEnd),
+	get_particles_leaving_container(Stuff),		% Stuff key-value pair particle-timestamp(string)
+	pairs_values(Stuff, Times),			% get the timestamps(strings)	
+	maplist(atom_number, Times, TimesInt), 		% change all thimestamps from string to number
+	min_list(TimesInt, EvSt),
+	max_list(TimesInt, EvEnd).
+
+
+pouringPose(Pose) :-
+	pour(_, Cont, _, _, EventStart, _),
+	get_model_pose(Cont, EventStart, Pose).
+
+
+draw_trajectory(Object, StartT, EndT) :-
+        jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'createTrajectory',[Object, StartT, EndT],[]).
+
+pour_action_trajectory :-
+	pour(_,Cont, ActSt, ActEnd,_,_),
+	draw_trajectory(Cont, ActSt, ActEnd).
+
+
+
+	
+%%% KnowRob
+
+sim_to_knowrob('mug', knowrob:'Cup').
+sim_to_knowrob('mix', knowrob:'PancakeMix').
+
+create_pouring_owl :-
+	% read data from DB
+	pour(Stuff, Cont, ActSt, ActEnd, EvSt, EvEnd),
+
+	% create action instance, set start and end times
+	cram_start_action(knowrob:'PouringSomething', '', ActSt, _, ActionInst),
+	cram_finish_action(ActionInst, ActEnd),
+
+	% create object instances
+	sim_to_knowrob(Cont, ContCls),
+	rdf_instance_from_class(ContCls, ContInst),
+
+	pairs_keys(Stuff, StuffIDs),
+	rdf_instance_from_class(knowrob:'PancakeMix', StuffInst),
+
+	findall(Particle, (member(Particle, StuffIDs),
+			rdf_assert(Particle, rdf:type, knowrob:'PancakeMix'),
+			rdf_assert(StuffInst, knowrob:physicalParts, Particle)), _),
+
+	% linst instances to the action
+	rdf_assert(ActionInst, knowrob:fromLocation, ContInst),
+	rdf_assert(ActionInst, knowrob:objectActedOn, StuffInst).
 
 
 
