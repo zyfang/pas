@@ -20,4 +20,3 @@
 :- register_ros_package(knowrob_cram).
 
 :- use_module(library(mongo_prolog)).
-:- use_module(library(xpce_ex)).

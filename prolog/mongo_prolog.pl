@@ -144,7 +144,7 @@ get_link_pose(CollectionNr, Link, Timestamp, Pose_Arr) :-
 
 
 %%%%%%%%%%%%%%%%%%%% HARDCODED STUFF IN JAVA %%%%%%%%%%%%%%%%%%%%%
-
+%%% Gaya
 %%%% flip
 spatula_contact_pancake(CollectionNr, T) :-	
 	jpl_new('mongo_prolog.MongoPrologInterface',[CollectionNr], DB),
@@ -153,6 +153,14 @@ spatula_contact_pancake(CollectionNr, T) :-
 lost_spatula_contact_pancake(CollectionNr, T) :-
 	jpl_new('mongo_prolog.MongoPrologInterface', [CollectionNr], DB),
 	jpl_call(DB, 'getFlipEnd', [CollectionNr], T).
+
+
+occurs(CollectionNr, Event, StT, EndT) :-
+	jpl_new('mongo_prolog.MongoPrologInterface',[CollectionNr], DB),
+	jpl_call(DB, 'getFlipStart', [CollectionNr], StT),
+        jpl_call(DB, 'getFlipEnd', [CollectionNr], EndT).
+
+
 
 
 %%%%%%%%%%%%%%%%% Robohow %%%%%%%%%%%%%%%%%%
@@ -210,11 +218,11 @@ draw_trajectory(Object, StartT, EndT) :-
         jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
 	jpl_call(DB, 'createTrajectory',[Object, StartT, EndT],[]).
 
-pour_action_trajectory :-
-	pour(_,Cont, ActSt, ActEnd,_,_),
-	draw_trajectory(Cont, ActSt, ActEnd).
 
-
+action_trajectory(Event) :-
+	object_event_type(Obj, Event),
+	get_manipulation_event_timestamps(Event, StT, EndT),
+	draw_trajectory(Obj, StT, EndT).
 
 	
 %%% KnowRob
@@ -225,15 +233,15 @@ sim_to_knowrob('mix', knowrob:'PancakeMix').
 create_pouring_owl :-
 	% read data from DB
 	pour(Stuff, Cont, ActSt, ActEnd, EvSt, EvEnd),
-
+	
 	% create action instance, set start and end times
 	cram_start_action(knowrob:'PouringSomething', '', ActSt, _, ActionInst),
 	cram_finish_action(ActionInst, ActEnd),
-
+	
 	% create object instances
 	sim_to_knowrob(Cont, ContCls),
 	rdf_instance_from_class(ContCls, ContInst),
-
+	
 	pairs_keys(Stuff, StuffIDs),
 	rdf_instance_from_class(knowrob:'PancakeMix', StuffInst),
 

@@ -32,6 +32,7 @@ import ros.pkg.geometry_msgs.msg.Point;
 import ros.pkg.geometry_msgs.msg.Quaternion;
 import ros.pkg.std_msgs.msg.ColorRGBA;
 import ros.pkg.visualization_msgs.msg.Marker;
+import ros.pkg.visualization_msgs.msg.MarkerArray;
 
 public class MongoPrologInterface {
 
@@ -45,6 +46,8 @@ public class MongoPrologInterface {
 	 * Store the markers to be published
 	 */
 	protected List<Marker> markers;
+	
+	protected MarkerArray marker_arr;
 	
 	/**
 	 * Counter for marker IDs
@@ -98,6 +101,8 @@ public class MongoPrologInterface {
 		
 		// init viz markers
 		markers = new ArrayList<Marker>();
+		marker_arr = new MarkerArray();
+		
 		
 		try {
 			// create a new DB client
@@ -924,15 +929,22 @@ public class MongoPrologInterface {
 		markerPublisher.start();
 		
 		
-		
-
 		ColorRGBA color = new ColorRGBA();
 		
-		color.r = 1;
-		color.g = 0;
-		color.b = 0;
-		color.a = 1;
-		
+		if (model_name.equals("mug"))
+		{		
+			color.r = 1;
+			color.g = 0;
+			color.b = 0;
+			color.a = 1;
+		}
+		else
+		{
+			color.r = 0;
+			color.g = 0;
+			color.b = 1;
+			color.a = 1;
+		}
 		
 		// query for getting the document between the given timestamp
 		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", start).append("$lte", end));
@@ -971,6 +983,8 @@ public class MongoPrologInterface {
 					Marker m = createMarker(json_pos.getDouble("x"), json_pos.getDouble("y"), json_pos.getDouble("z"), 0.01, color, Marker.SPHERE);
 
 					markers.add(m);
+					
+					marker_arr.markers.add(m);
 
 					step = 0;
 				}
@@ -1015,17 +1029,7 @@ public class MongoPrologInterface {
 		return m;
 
 	}
-	
-	
-//	public void startVisualization(){
-//		// local method, Thread-safe ROS initialization
-//		initRos();
-//
-//		markerPublisher = new Thread( new PublisherThread() );
-//		
-//		markerPublisher.start();
-//	}
-	
+
 	
 	/**
 	 * Thread-safe ROS initialization
@@ -1057,19 +1061,28 @@ public class MongoPrologInterface {
 			try {
 				
 				Publisher<Marker> pub = n.advertise("visualization_marker", new Marker(), 100);				
-
+				Publisher<MarkerArray> arr_pub = n.advertise("visualization_marker_array", new MarkerArray(), 100);	
+				
+				
 				while(n.isValid()) {					
 					
 					
-					synchronized (markers) 
+//					synchronized (markers) 
+//					{
+//						for(int i = 0; i < markers.size(); i++)
+//						{
+//							pub.publish(markers.get(i));
+//						}
+//					}
+					
+					synchronized (marker_arr) 
 					{
-						for(int i = 0; i < markers.size(); i++)
-						{
-							pub.publish(markers.get(i));
-						}
+						arr_pub.publish(marker_arr);
 					}
+					
+					
 					n.spinOnce();
-					Thread.sleep(50);
+					Thread.sleep(2000);
 				}		
 
 				pub.shutdown();
