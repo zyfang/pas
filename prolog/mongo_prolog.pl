@@ -231,6 +231,11 @@ draw_trajectory(Object, StartT, EndT) :-
 	jpl_call(DB, 'createTrajectory',[Object, StartT, EndT],[]).
 
 
+remove_trajectory :-
+        jpl_new('mongo_prolog.MongoPrologInterface', [], DB),
+	jpl_call(DB, 'removeTrajectory',[],[]).
+
+
 action_trajectory(Event) :-
 	object_event_type(Obj, Event),
 	get_manipulation_event_timestamps(Event, StT, EndT),
@@ -279,13 +284,15 @@ putDownPose(P) :-
 sim_to_knowrob('mug', 'http://ias.cs.tum.edu/kb/knowrob.owl#Cup').
 sim_to_knowrob('mix', 'http://ias.cs.tum.edu/kb/knowrob.owl#PancakeMix').
 
-create_pouring_owl() :-
+create_pouring_owl :-
 	% read data from DB
 	pour(Stuff, Cont, ActSt, ActEnd, EvSt, EvEnd),
 	
 	% create action instance, set start and end times
-	cram_start_action(knowrob:'PouringSomething', '', ActSt, _, ActionInst), 
-	cram_finish_action(ActionInst, ActEnd),
+	create_event(knowrob:'PouringSomethingAct', ActSt, ActEnd, ActionInst),
+
+	% create event instance, set start and end times
+	create_event(knowrob:'PouringSomethingEv', EvSt, EvEnd, EventInst),
 	
 	% create object instances
 	sim_to_knowrob(Cont, ContCls),
@@ -301,6 +308,22 @@ create_pouring_owl() :-
 	% list instances to the action
 	rdf_assert(ActionInst, knowrob:fromLocation, ContInst),
 	rdf_assert(ActionInst, knowrob:objectActedOn, StuffInst).
+
+
+
+
+create_event(Type, StartTime, EndTime, EventInst) :-
+
+  % create action instance
+  rdf_instance_from_class(Type, EventInst),
+
+  % create timepoint instance and set as start time
+  create_timepoint(StartTime, StTime),
+  rdf_assert(EventInst, knowrob:startTime, StTime),
+
+  % create timepoint instance and set as end time
+  create_timepoint(EndTime, ETime),
+  rdf_assert(EventInst, knowrob:endTime, ETime).
 
 
 

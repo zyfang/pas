@@ -45,7 +45,7 @@ public class MongoPrologInterface {
 	/**
 	 * Store the markers to be published
 	 */
-	protected List<Marker> markers;
+	protected static List<Marker> markers;
 	
 //	protected MarkerArray marker_arr;
 	
@@ -1030,6 +1030,11 @@ public class MongoPrologInterface {
 				
 	}
 	
+	
+	public void removeTrajectory()
+	{
+		markers.clear();
+	}
 	
 	public Marker createMarker(double posX, double posY, double posZ, double scale, ColorRGBA color, int markerType)
 	{
