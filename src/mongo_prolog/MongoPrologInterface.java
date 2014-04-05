@@ -47,7 +47,7 @@ public class MongoPrologInterface {
 	 */
 	protected List<Marker> markers;
 	
-	protected MarkerArray marker_arr;
+//	protected MarkerArray marker_arr;
 	
 	/**
 	 * Counter for marker IDs
@@ -101,7 +101,7 @@ public class MongoPrologInterface {
 		
 		// init viz markers
 		markers = new ArrayList<Marker>();
-		marker_arr = new MarkerArray();
+//		marker_arr = new MarkerArray();
 		
 		
 		try {
@@ -370,6 +370,7 @@ public class MongoPrologInterface {
 	/**
 	 * TODO make sure timestamps are organized chronologically, otherwise don't use $gte
 	 * TODO merge events, otherwise it might take a timestamp without models
+	 * TODO added exists because of collision with the event timestamps
 	 * @param model_name
 	 * @param timestamp
 	 * @return
@@ -387,7 +388,7 @@ public class MongoPrologInterface {
 		// query for getting the document at the given closest greater or equal than the timestamp
 		// TODO cannot use $gte, since the timestamps are not organized chronologically anymore
 //		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", timestamp));
-		BasicDBObject query = new BasicDBObject("timestamp", timestamp);
+		BasicDBObject query = new BasicDBObject("timestamp", timestamp).append("models", new BasicDBObject("$exists","true"));
 
 	    
 		// fields for projecting only the pose of the given model name
@@ -926,25 +927,7 @@ public class MongoPrologInterface {
 		
 		markerPublisher = new Thread( new PublisherThread() );
 		
-		markerPublisher.start();
-		
-		
-		ColorRGBA color = new ColorRGBA();
-		
-		if (model_name.equals("mug"))
-		{		
-			color.r = 1;
-			color.g = 0;
-			color.b = 0;
-			color.a = 1;
-		}
-		else
-		{
-			color.r = 0;
-			color.g = 0;
-			color.b = 1;
-			color.a = 1;
-		}
+
 		
 		// query for getting the document between the given timestamp
 		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", start).append("$lte", end));
@@ -958,6 +941,36 @@ public class MongoPrologInterface {
 		
 		// find all the matching documents
 		DBCursor cursor = coll.find(query, fields);
+		
+//		int nr_docs = cursor.size();
+		
+		ColorRGBA color = new ColorRGBA();	
+		
+		if (model_name.equals("mug")){		
+			color.r = 1;
+			color.g = 0 /*1 - (float) nr_docs/cursor.size()*/;
+			color.b = 0;
+			color.a = 1;
+		}
+		else{
+			color.r = 0;
+			color.g = 0 /*1 - (float) nr_docs/cursor.size()*/;
+			color.b = 1;
+			color.a = 1;
+		}
+		
+
+				
+//		Marker line_strip_marker = new Marker();
+//		line_strip_marker.type = Marker.LINE_STRIP;
+//		line_strip_marker.scale.x = 0.01;
+//		line_strip_marker.color = color;		
+//		line_strip_marker.header.frame_id = "/map";
+//		line_strip_marker.header.stamp = Time.now();
+//		line_strip_marker.ns = "knowrob_vis";
+//		line_strip_marker.id = id++;					
+//		line_strip_marker.action = Marker.ADD;
+//		line_strip_marker.lifetime = new Duration();
 		
 		// loop through the found results
 		while (cursor.hasNext()){
@@ -980,11 +993,23 @@ public class MongoPrologInterface {
 					JSONObject json_pos = models_array.getJSONObject(0).getJSONObject("pos");
 
 
-					Marker m = createMarker(json_pos.getDouble("x"), json_pos.getDouble("y"), json_pos.getDouble("z"), 0.01, color, Marker.SPHERE);
-
-					markers.add(m);
+//					Point p = new Point();
+//					
+//					p.x = json_pos.getDouble("x");
+//					p.y = json_pos.getDouble("y");
+//					p.z = json_pos.getDouble("z");
 					
-					marker_arr.markers.add(m);
+//					line_strip_marker.points.add(p);	
+
+					
+//					System.out.println("nr docs: " + nr_docs + " colorg: " + color.g + " 1 - " + (float) nr_docs/cursor.size());
+//					nr_docs -= 10;					
+									
+					
+					Marker m = createMarker(json_pos.getDouble("x"), json_pos.getDouble("y"), json_pos.getDouble("z"), 0.01, color, Marker.SPHERE);
+					markers.add(m);			
+					
+//					marker_arr.markers.add(m);
 
 					step = 0;
 				}
@@ -995,7 +1020,13 @@ public class MongoPrologInterface {
 				//e.printStackTrace();
 			}
 			
-		}
+			
+			
+		}	
+
+//			markers.add(line_strip_marker);
+		
+		markerPublisher.start();	
 				
 	}
 	
@@ -1006,7 +1037,7 @@ public class MongoPrologInterface {
 		
 		m.type = markerType;
 		
-		m.scale.x = scale;
+		m.scale.x = scale;		
 		m.scale.y = scale;
 		m.scale.z = scale;		
 
@@ -1042,10 +1073,7 @@ public class MongoPrologInterface {
 		if(!Ros.getInstance().isInitialized()) {
 			ros.init("knowrob_vis");
 		}
-		n = ros.createNodeHandle();
-		
-		System.out.println("ros init check");
-		
+		n = ros.createNodeHandle();		
 	}
 	
 	/**
@@ -1061,24 +1089,24 @@ public class MongoPrologInterface {
 			try {
 				
 				Publisher<Marker> pub = n.advertise("visualization_marker", new Marker(), 100);				
-				Publisher<MarkerArray> arr_pub = n.advertise("visualization_marker_array", new MarkerArray(), 100);	
+//				Publisher<MarkerArray> arr_pub = n.advertise("visualization_marker_array", new MarkerArray(), 100);	
 				
 				
 				while(n.isValid()) {					
 					
 					
-//					synchronized (markers) 
-//					{
-//						for(int i = 0; i < markers.size(); i++)
-//						{
-//							pub.publish(markers.get(i));
-//						}
-//					}
-					
-					synchronized (marker_arr) 
+					synchronized (markers) 
 					{
-						arr_pub.publish(marker_arr);
+						for(int i = 0; i < markers.size(); i++)
+						{
+							pub.publish(markers.get(i));
+						}
 					}
+					
+//					synchronized (marker_arr) 
+//					{
+//						arr_pub.publish(marker_arr);
+//					}
 					
 					
 					n.spinOnce();
@@ -1178,7 +1206,7 @@ public class MongoPrologInterface {
 		
 //		mpi2.drawTrajectory("mug", 0, 1234253235);
 		
-//		mpi2.getModelPose("mug", 15232000000L);
+//		System.out.println(mpi2.getModelPose("mug", 30629000000L)[0]);
 		
 //		System.out.println(mpi2.getEventTimestamps("flip")[0]);
 		

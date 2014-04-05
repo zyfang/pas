@@ -18,11 +18,21 @@
 		get_model_pose/3,
 		get_model_bb/4,
 		get_link_pose/4,
-		get_manipulation_event_timestamps/3
+		get_manipulation_event_timestamps/3,
+		spatula_contact_pancake/2,
+		lost_spatula_contact_pancake/2,
+		proposedHoldingPose/1,
+		occurs/4
+		
 	]).
 	
 
 :- use_module(library('jpl')).
+:- use_module(library('knowrob_owl')).
+
+:- use_module(library('semweb/owl')).
+
+:- use_module(library('semweb/rdfs')).
 
 
 % create_interface(-IJavaDB).
@@ -155,10 +165,12 @@ lost_spatula_contact_pancake(CollectionNr, T) :-
 	jpl_call(DB, 'getFlipEnd', [CollectionNr], T).
 
 
-occurs(CollectionNr, Event, StT, EndT) :-
+occurs(CollectionNr, Event, StTStr, EndTStr) :-
 	jpl_new('mongo_prolog.MongoPrologInterface',[CollectionNr], DB),
 	jpl_call(DB, 'getFlipStart', [CollectionNr], StT),
-        jpl_call(DB, 'getFlipEnd', [CollectionNr], EndT).
+        jpl_call(DB, 'getFlipEnd', [CollectionNr], EndT),
+	atom_number(StTStr, StT),
+	atom_number(EndTStr, EndT).
 
 
 
@@ -198,7 +210,7 @@ get_particles_leaving_container(PT_Arr) :-
 	jpl_call(DB, 'getParticlesLeavingContainer', [], PT_HashMap),
 	findall(PT_KeyValuePair, jpl_map_element(PT_HashMap, PT_KeyValuePair), PT_Arr).
 
-	
+%%%%%%pour	
 pour(Stuff, Cont, ActSt, ActEnd, EvSt, EvEnd) :-
 	object_type(Cont, container),
 	hand_manipulates_object(Cont, ActSt, ActEnd),
@@ -224,24 +236,61 @@ action_trajectory(Event) :-
 	get_manipulation_event_timestamps(Event, StT, EndT),
 	draw_trajectory(Obj, StT, EndT).
 
+
+
+%%% ProposedHoldingPose
+
+action_type(a223,'PouringSomethingAction').
+
+object_acted_on(a223, mug).
+
+event_type(e137,'PouringSomethingEvent').
+
+event_end(e137,Ti) :-
+	pour(_,_,_,_,_,Ti).
+
+action_end(a223,Ti) :-
+	pour(_,_,_,Ti,_,_).
+
+
+pose(Obj,P,Ti) :-
+	get_model_pose(Obj,Ti,P).
+
+
+
+proposedHoldingPose(P):-
+	action_type(A, 'PouringSomethingAction'),
+	object_acted_on(A, Obj),
+	event_type(E, 'PouringSomethingEvent'),
+	event_end(E, Ti),
+	pose(Obj, P, Ti).
+
+
+putDownPose(P) :-
+	action_type(Act, 'PouringSomethingAction'),
+	object_acted_on(Act, Obj),
+	action_end(E, Ti),
+	pose(Obj, P, Ti).
+
+
 	
 %%% KnowRob
 
-sim_to_knowrob('mug', knowrob:'Cup').
-sim_to_knowrob('mix', knowrob:'PancakeMix').
+sim_to_knowrob('mug', 'http://ias.cs.tum.edu/kb/knowrob.owl#Cup').
+sim_to_knowrob('mix', 'http://ias.cs.tum.edu/kb/knowrob.owl#PancakeMix').
 
-create_pouring_owl :-
+create_pouring_owl() :-
 	% read data from DB
 	pour(Stuff, Cont, ActSt, ActEnd, EvSt, EvEnd),
 	
 	% create action instance, set start and end times
-	cram_start_action(knowrob:'PouringSomething', '', ActSt, _, ActionInst),
+	cram_start_action(knowrob:'PouringSomething', '', ActSt, _, ActionInst), 
 	cram_finish_action(ActionInst, ActEnd),
 	
 	% create object instances
 	sim_to_knowrob(Cont, ContCls),
 	rdf_instance_from_class(ContCls, ContInst),
-	
+
 	pairs_keys(Stuff, StuffIDs),
 	rdf_instance_from_class(knowrob:'PancakeMix', StuffInst),
 
@@ -249,7 +298,7 @@ create_pouring_owl :-
 			rdf_assert(Particle, rdf:type, knowrob:'PancakeMix'),
 			rdf_assert(StuffInst, knowrob:physicalParts, Particle)), _),
 
-	% linst instances to the action
+	% list instances to the action
 	rdf_assert(ActionInst, knowrob:fromLocation, ContInst),
 	rdf_assert(ActionInst, knowrob:objectActedOn, StuffInst).
 
