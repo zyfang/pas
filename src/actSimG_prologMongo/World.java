@@ -2,7 +2,7 @@
  * Email: a.haidu@gmail.com
  */
 
-package mongo_prolog;
+package actSimG_prologMongo;
 
 import java.util.HashMap;
 import java.util.Map;

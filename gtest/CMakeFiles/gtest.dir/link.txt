@@ -1,0 +1,1 @@
+/usr/bin/c++  -fPIC -O2 -g   -shared -Wl,-soname,libgtest.so -o ../lib/libgtest.so CMakeFiles/gtest.dir/src/gtest-all.cc.o -L/home/yfang/project_actSimG/java_eclipse_ws/mongo_prolog/gtest/src -lpthread -Wl,-rpath,/home/yfang/project_actSimG/java_eclipse_ws/mongo_prolog/gtest/src 

@@ -1,4 +1,4 @@
-package mongo_prolog;
+package actSimG_prologMongo;
 
 public class Vector3 {
 	
