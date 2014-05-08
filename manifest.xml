@@ -1,13 +1,13 @@
 <package>
-  <description brief="mongo_prolog">
+  <description brief="actSimG_prologMongo">
 
-     mongo_prolog
+     actSimG_prologMongo
 
   </description>
-  <author>Andrei Haidu</author>
+  <author>Zhou Fang, Andrei Haidu</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/mongo_prolog</url>
+  <url>http://ros.org/wiki/actSimG_prologMongo</url>
   
   <depend package="rosjava_jni"/>
   <depend package="jpl"/>
