@@ -27,6 +27,14 @@ public class DerivedSEC extends SEC{
 		this.timelabels = _times;
 	}
 	
+	/**
+	 * Fills up the SEC with dummy rows up to min_nrows if the SEC has less rows than min_nrows
+	 * 
+	 * CALLS: 		-
+	 * CALLED BY: 	SemanticEventChains.temporalSimilarityValueWith
+	 * @param min_nrows
+	 * @return
+	 */
 	public DerivedSEC extendWithDummySEC (int min_nrows)
 	{
 		//determine whether need to add dummy rows to the end (transposed these will be dummy columns)
@@ -48,6 +56,13 @@ public class DerivedSEC extends SEC{
 		return this;
 	}
 	
+	/**
+	 * Adds nrow dummy rows to the SEC. 
+	 * This function is for helping with debugging spatial and temporal similarity code (by artificially changing the dimensions of the SEC for testing comparisons)
+	 * 
+	 * @param nrow
+	 * @return
+	 */
 	public DerivedSEC addDummyRows (int nrow)
 	{
 		int ncols = this.SECmatrix.get(0).size();
@@ -67,7 +82,8 @@ public class DerivedSEC extends SEC{
 	}
 	
 	/**
-	 * Temporary function for helping with debugging spatial and temporal similarity code (by manually changing the dimensions of the SEC)
+	 * Adds ncol dummy columns to the SEC.
+	 * This function is for helping with debugging spatial and temporal similarity code (by artificially changing the dimensions of the SEC for testing comparisons)
 	 * @param ncol
 	 * @return
 	 */
@@ -89,63 +105,6 @@ public class DerivedSEC extends SEC{
 			}
 		}
 		return this;
-	}
-
-	/**
-	 * Return a map with columns as lists and the key will be the timestamp. Used for transposing columns of SEC to rows.
-	 * In addition it fills the SEC up to a number of rows with dummies if there are not enough rows and the same for columns
-	 * Pass min_nrows = 0 if don't want dummies
-	 * 
-	 * TODO: when filling row with dummies, no label for the row is added, will this be a problem?!
-	 * 
-	 * @param min_nrows
-	 * @return
-	 */
-	public DerivedSEC transposeSEC (int min_nrows, int min_ncols)
-	{
-		//make transposed SEC
-		List<List<String>> newmatrix = new ArrayList<List<String>>();
-		List<Pair<Integer, Integer>> newrellabels = new ArrayList<Pair<Integer,Integer>>(relationlabels);
-		List<String> newtimelabels = new ArrayList<String>(timelabels);
-		//how many columns are there. Matrix should have same # columns in each row
-		int n_col = SECmatrix.get(0).size();
-		//determine whether need to add dummy rows to the end (transposed these will be dummy columns)
-		int ndummyrow = min_nrows-SECmatrix.size();
-		//build new matrix column by column
-		for(int i=0; i< n_col; i++)
-		{
-			List<String> newcolumn = new ArrayList<String>();
-			Pair<Integer,Integer> dummy_rellabel = new Pair<Integer,Integer>(999,999);
-			for(List<String> irow : SECmatrix) //for every row, add the current column value to the column list
-			{
-				newcolumn.add(irow.get(i));
-			}
-			for(int j=0; j<ndummyrow; j++) //for every dummy, add one 0 to the end
-			{
-				newcolumn.add("0");
-				if(i==0)//if this is the first column, so the dummylabels haven't been added before for the current row(s)
-				{
-					newrellabels.add(dummy_rellabel);
-				}
-			}
-			newmatrix.add(newcolumn);
-		}
-		//add dummycols (here they are rows because the matrix is transposed)
-		int ndummycol = min_ncols-n_col;
-		for(int i=0; i<ndummycol; i++)
-		{
-			List<String> newcolumn = new ArrayList<String>();
-			String dummy_timelabel = "xxx";
-			for(int j=0; j<min_nrows; j++)
-			{
-				newcolumn.add("0");
-			}
-			newmatrix.add(newcolumn);
-			newtimelabels.add(dummy_timelabel);
-		}
-		DerivedSEC newSEC = new DerivedSEC(newmatrix, newrellabels, newtimelabels);
-//		newSEC.printSEC(newSEC.getTimeStrings(), newSEC.getRelationStrings());
-		return newSEC;
 	}
 	
 	public List<String> getTimeStrings()
