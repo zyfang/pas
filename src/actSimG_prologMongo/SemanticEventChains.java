@@ -144,8 +144,9 @@ public class SemanticEventChains {
 	/**
 	 * 
 	 * @param osec
+	 * @return 
 	 */
-	public void constructDerivedSEC(OriginalSEC osec)
+	public DerivedSEC constructDerivedSEC(OriginalSEC osec)
 	{
 		List<List<String>> dsec_matrix = new ArrayList<List<String>>();
 		List<Pair<Integer, Integer>> rlabels = new ArrayList<Pair<Integer,Integer>>();
@@ -184,6 +185,7 @@ public class SemanticEventChains {
 		}
 		DerivedSEC newdsec = new DerivedSEC(dsec_matrix, rlabels, timelabels);
 		this.dSEC = newdsec;
+		return newdsec;
 	}
 
 	/**
@@ -327,4 +329,6 @@ public class SemanticEventChains {
 	{
 		return this.cSEC;
 	}
+	
+	
 }
