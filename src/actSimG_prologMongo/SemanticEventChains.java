@@ -232,26 +232,27 @@ public class SemanticEventChains {
 		for(int i=0; i< sec1.SECmatrix.size(); i++)
 		{
 			Pair<Integer,Integer> correspondingkey = correspondingRelation(cur_perm, sec1.relationlabels.get(i)); //which objectrelation in SEC2 corresponds to this key?
-			//find at which position that key is
-			int corresponding_index = labelIndex(correspondingkey, sec2.relationlabels);
-			//put the right key and value into the new SEC2. Given that we're going through the ordered SEC1 one by one, the order of SEC2 is also automatically right.
-			reordered_matrix.add(sec2.SECmatrix.get(corresponding_index));
-			reorder_rellabels.add(sec2.relationlabels.get(corresponding_index));
-		}
-		if(sec2.relationlabels.size() > sec1.relationlabels.size()) //if there are more objects in sec1 than sec 2
-		{
-			for(int i=0; i< sec2.relationlabels.size(); i++) //for every row in sec2, see whether it's already in the new matrix and if not, add it
+			if(correspondingkey != null)
 			{
-				if(!reorder_rellabels.contains(sec2.relationlabels.get(i)))
-				{
-					reordered_matrix.add(sec2.SECmatrix.get(i));
-					reorder_rellabels.add(sec2.relationlabels.get(i));
-				}
+				//find at which position that key is
+				int corresponding_index = labelIndex(correspondingkey, sec2.relationlabels);
+				//put the right key and value into the new SEC2. Given that we're going through the ordered SEC1 one by one, the order of SEC2 is also automatically right.
+				reordered_matrix.add(sec2.SECmatrix.get(corresponding_index));
+				reorder_rellabels.add(sec2.relationlabels.get(corresponding_index));
+			}
+			else //if the key is 0, it should mean that sec1 is currently a dummy
+			{
+				System.out.println(sec1.getRelationStrings().get(i));
 			}
 		}
-		else if(sec1.relationlabels.size() > sec2.relationlabels.size()) //sanity check, this shouldn't happen
+		//if there are more objects in sec1 than sec 2
+		for(int i=0; i< sec2.relationlabels.size(); i++) //for every row in sec2, see whether it's already in the new matrix and if not, add it
 		{
-			System.exit(1);
+			if(!reorder_rellabels.contains(sec2.relationlabels.get(i)))
+			{
+				reordered_matrix.add(sec2.SECmatrix.get(i));
+				reorder_rellabels.add(sec2.relationlabels.get(i));
+			}
 		}
 		return new DerivedSEC(reordered_matrix, reorder_rellabels, sec2.timelabels);
 	}

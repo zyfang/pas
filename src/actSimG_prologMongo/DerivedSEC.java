@@ -26,6 +26,70 @@ public class DerivedSEC extends SEC{
 		this.SECmatrix = _matrix;
 		this.timelabels = _times;
 	}
+	
+	public DerivedSEC extendWithDummySEC (int min_nrows)
+	{
+		//determine whether need to add dummy rows to the end (transposed these will be dummy columns)
+		int ndummyrow = min_nrows-SECmatrix.size();
+		int ncols = this.SECmatrix.get(0).size();
+		//add dummy rows
+		Pair<Integer,Integer> dummy_rellabel = new Pair<Integer,Integer>(999,999);
+		for(int i=0; i<ndummyrow; i++)
+		{
+			List<String> dummyrow = new ArrayList<String>();
+			for(int j=0; j<ncols; j++) //how long the row should be
+			{
+				dummyrow.add("0");
+			}
+			this.SECmatrix.add(dummyrow);
+			this.relationlabels.add(dummy_rellabel);
+			
+		}
+		return this;
+	}
+	
+	public DerivedSEC addDummyRows (int nrow)
+	{
+		int ncols = this.SECmatrix.get(0).size();
+		//add dummy rows
+		Pair<Integer,Integer> dummy_rellabel = new Pair<Integer,Integer>(999,999);
+		for(int i=0; i<nrow; i++)
+		{
+			List<String> dummyrow = new ArrayList<String>();
+			for(int j=0; j<ncols; j++) //how long the row should be
+			{
+				dummyrow.add("12");
+			}
+			this.SECmatrix.add(dummyrow);
+			this.relationlabels.add(dummy_rellabel);
+		}
+		return this;
+	}
+	
+	/**
+	 * Temporary function for helping with debugging spatial and temporal similarity code (by manually changing the dimensions of the SEC)
+	 * @param ncol
+	 * @return
+	 */
+	public DerivedSEC addDummyColumns (int ncol)
+	{
+		//determine whether need to add dummy rows to the end (transposed these will be dummy columns)
+		int nrows = this.SECmatrix.size();
+		//add 00's at end of each row (one for each dummy column)
+		String dummy_timelabel = "xxxxxxx";
+		for(int i=0; i<nrows; i++)
+		{
+			for(int j=0; j<ncol; j++) //how long the row should be
+			{
+				this.SECmatrix.get(i).add("12");
+				if(i==0)//this is the first row, so also need to add dummy column labels
+				{
+					this.timelabels.add(dummy_timelabel);
+				}
+			}
+		}
+		return this;
+	}
 
 	/**
 	 * Return a map with columns as lists and the key will be the timestamp. Used for transposing columns of SEC to rows.

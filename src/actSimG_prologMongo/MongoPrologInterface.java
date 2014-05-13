@@ -67,7 +67,7 @@ import sun.security.util.DerEncoder;
  * For now I'm leaving it like this and still reporting both spatial and temporal similarity. 
  *
  */
-public class MongoPrologInterface7_h {
+public class MongoPrologInterface {
 
 	private static final long A_TIMESTAMP = 0L;
 
@@ -175,7 +175,7 @@ public class MongoPrologInterface7_h {
 	 * MongoPrologInterface constructor
 	 * @param collection 
 	 */
-	public MongoPrologInterface7_h(String name) {		
+	public MongoPrologInterface(String name) {		
 		// echo for prolog
 //		System.out.println("IJavaDB: " + "calling MongoPrologInterface constructor, setting up connection to database..");
 
@@ -556,114 +556,6 @@ public class MongoPrologInterface7_h {
 		}		
 		return mainGraphs;
 	}
-
-	public Double [][] spatialSimilarityMatrix(CompressedSEC SEC1, CompressedSEC SEC2)
-	{
-		Double[][] similarity_matrix = new Double[SEC1.SECmatrix.size()][SEC2.SECmatrix.size()];
-//		System.out.println("Comparing: ");
-//		SEC1.printSEC(SEC1.getRelationStrings(), null);
-//		System.out.println("To: ");
-//		SEC2.printSEC(SEC2.getRelationStrings(), null);
-
-		//Every row of SEC1 is compared to every row of SEC2 to find the highest similarity.
-		int irow =0; //to keep track of where to store the similarity value in the matrix. 
-		for(List<String> irow_SEC1 : SEC1.SECmatrix)
-		{
-			int icolumn =0;
-			for(List<String> irow_SEC2 : SEC2.SECmatrix)
-			{
-				double max_similarity = 0; //maximum similarity for the comparison of the two rows
-				if(irow_SEC1.size() > irow_SEC2.size())
-				{					
-					max_similarity = max_spatial_row_similarity(irow_SEC1, irow_SEC2);
-				}
-				else //currow2 is bigger or of equal size as currow1
-				{
-					max_similarity = max_spatial_row_similarity(irow_SEC2, irow_SEC1);
-				}
-				similarity_matrix[irow][icolumn]=max_similarity;
-				icolumn++;
-			}
-			irow++;
-		}
-		return similarity_matrix;
-	}
-	
-	/**
-	 * Loops over rows recursively to find row/column correspondence. Splits off to multiple if more than one possibility in a row.
-	 * Computes final spatial similarity values for all the possible correspondence choices if two columns have the same big value for one row. 
-	 * The value is the average value of the highest similarities across rows of the similarity matrix.
-	 * 
-	 * WARNING: SEC1 (rows) should always be equal to or smaller than SEC2 in size! Otherwise the way to compute similarity doesn't really make sense.
-	 * TODO decide what to do when number of rows not equal --> 1) ignore inequality and take the smaller one as the row for the correspondence, so the extra columns 
-	 * will just be left over. 2) Take the largest one as row for correspondence and fill up remaining similarity values with 0 (equivalent to filling up
-	 * with dummies. May make sense that actions that involve more objects changing are different and this should be reflected in the similarity value,
-	 * but maybe unrelated things are going on at the same time --> how do we know? + a BIGGER issue is that just by chance the last object(s) will never be
-	 * matched even if they actually correspond much better)
-	 * For now implemented option 1 because that first came into mind. Can implement 2) later too and compare results if desirable.
-	 * TODO this algorithm is not guaranteed to find the optimal solution for the correspondence problem: if an earlier row Did have a single corresponding
-	 * highest column, a later row will never be able to associate with that column because it will never be available, even if the overall resulting similarity would be higher.
-	 * TODO right now the whole process only works if the same SEC has equal or smaller number of rows AND equal or smaller number of columns compared to the other. Need
-	 * the row constraint for this function and the column constraint for the temporal similarity matrix. If they are not the same, the order in the permutationlist will be false.
-	 * I can solve this by changing the order in which I input the correspondence pairs (it's easy to check which SEC has fewer columns. I should do this in the wrap function and
-	 * give it here as a boolean.
-	 * 
-	 * @param permutations
-	 * @param similarityvalue
-	 * @param spatial_sim_matrix_left
-	 * @param SEC1labels_left
-	 * @param SEC2labels_left
-	 */
-	public void similarityCorrespondence(List<List<Pair<String, String>>> permutations, List<Double> similarityvalues, List<Pair<String,String>> oneperm, Double tempsimsum, int nrows, Double[][] spatial_sim_matrix_left, List<String> SEC1labels_left, List<String> SEC2labels_left)
-	{
-		//print matrix to inspect progression on search
-		//		printMatrix(spatial_sim_matrix_left, SEC1labels_left, SEC2labels_left);
-		//stop condition
-		if(SEC1labels_left.size()==0)//I don't know which is smaller, there may be objects left 
-		{
-			permutations.add(oneperm);
-			similarityvalues.add(tempsimsum/nrows);
-//			System.out.println("Adding:\n"+oneperm.toString());
-//			System.out.println("Similarity value: " +tempsimsum/nrows);
-		}
-		else if(SEC2labels_left.size()==0)
-		{
-			System.err.println("WARNING: SEC2 is smaller than SEC1, with the size checks in the comparison function this should never happen.");
-		}
-		else //there are still labels left to correspond
-		{
-			//Determine max value by sorting a copy of the row and looking at the end TODO Collections.sort(temprow); Double largestval = temprow[temprow.length-1];
-			//need to first determine what the largest val is, and then go through row again to see which ones have the largest val
-			Double[] currow = spatial_sim_matrix_left[0];
-			Double largestval = maxValue(currow);
-
-			String rowind = SEC1labels_left.get(0); //we know there has to be Some correspondent to this row
-			for(int icolumn=0; icolumn<currow.length;icolumn++)
-			{
-				Double curval =currow[icolumn];
-				if(curval.equals(largestval))
-				{
-					//					System.out.println("current tempsum=" + tempsimsum);
-					//which association does this largest val have?
-					String colind= SEC2labels_left.get(icolumn);
-					Pair<String,String> curassoc = new Pair<String,String>(rowind, colind);
-
-					//remove affected row and column, and then go on to the rest of the matrix
-					Double[][] next_simmatrix = removeFromMatrix(spatial_sim_matrix_left, 0, icolumn);
-					List<String> newSEC1 = new ArrayList<String>(SEC1labels_left);
-					newSEC1.remove(0);
-					//					System.out.println("newSEC1: " + newSEC1.toString());
-					List<String> newSEC2 = new ArrayList<String>(SEC2labels_left);
-					newSEC2.remove(icolumn);
-					//					System.out.println("newSEC2: " + newSEC2.toString());
-					List<Pair<String,String>> addedPerm = new ArrayList<Pair<String,String>>(oneperm);
-					addedPerm.add(curassoc);
-
-					similarityCorrespondence(permutations, similarityvalues, addedPerm, tempsimsum+largestval, nrows, next_simmatrix, newSEC1, newSEC2);
-				}				
-			}
-		}
-	}
 	
 	/**
 	 * Searches which row-column correspondences lead to the highest overall similarity in a greedy fashion, without assuming which dimension is smaller
@@ -678,15 +570,17 @@ public class MongoPrologInterface7_h {
 	 * @param SEC1labels_left
 	 * @param SEC2labels_left
 	 */
-	public void greedySimilarityCorrespondence(List<List<Pair<String, String>>> permutations, List<Double> similarityvalues, List<Pair<String,String>> oneperm, Double tempsimsum, int nrows, Double[][] spatial_sim_matrix_left, List<String> SEC1labels_left, List<String> SEC2labels_left)
+	public void greedySimCor(List<List<Pair<String, String>>> permutations, List<Double> similarityvalues, List<Pair<String,String>> oneperm, Double tempsimsum, int nrows, Double[][] spatial_sim_matrix_left, List<String> SEC1labels_left, List<String> SEC2labels_left)
 	{
-		//print matrix to inspect progression on search
-		printMatrix(spatial_sim_matrix_left, SEC1labels_left, SEC2labels_left);
+//		//print matrix to inspect progression on search
+//		printMatrix(spatial_sim_matrix_left, SEC1labels_left, SEC2labels_left);
 		//stop condition
+		System.out.println(tempsimsum);
 		if(SEC1labels_left.size()==0)
 		{
 			permutations.add(oneperm);
 			similarityvalues.add(tempsimsum/nrows);
+			System.out.println("tempsimsum/nrows: " + tempsimsum + "/" + nrows + "=" + tempsimsum/nrows);
 			if(SEC2labels_left.size() != 0)
 			{
 				System.out.println("WARNING: No correspondences where possible for the following SEC2:\n"+SEC2labels_left.toString());
@@ -696,6 +590,7 @@ public class MongoPrologInterface7_h {
 		{
 			permutations.add(oneperm);
 			similarityvalues.add(tempsimsum/nrows);
+			System.out.println("tempsimsum/nrows: " + tempsimsum + "/" + nrows + "=" + tempsimsum/nrows);
 			//don't need to check whether SEC1labels is 0, because if it was, it would have never gotten in this condition
 			System.out.println("WARNING: No correspondences where possible for the following SEC1:\n"+SEC1labels_left.toString());
 		}
@@ -727,52 +622,112 @@ public class MongoPrologInterface7_h {
 						List<Pair<String,String>> addedPerm = new ArrayList<Pair<String,String>>(oneperm);
 						addedPerm.add(curassoc);
 
-						greedySimilarityCorrespondence(permutations, similarityvalues, addedPerm, tempsimsum+largestval, nrows, next_simmatrix, newSEC1, newSEC2);
+						greedySimCor(permutations, similarityvalues, addedPerm, tempsimsum+largestval, nrows, next_simmatrix, newSEC1, newSEC2);
 					}	
 				}
 			}
 		}
 	}
 
-	public List<Double> hackTemporalSimilaritySimpleCorrespondence(List<List<Pair<String, String>>> permutations, List<Double> similarityval, List<Pair<String,String>> oneperm, Double tempsimsum, int nrows, Double[][] spatial_sim_matrix, List<String> SEC1labels, List<String> SEC2labels)
+	/**
+	 * Alternative function for finding correspondences from a similarity matrix. Instead of checking all child nodes with the same value
+	 * (e.g. if there is more than one of the largest value), simply takes the first one it finds and goes with that.
+	 * 
+	 * @param permutations
+	 * @param similarityval
+	 * @param oneperm
+	 * @param tempsimsum
+	 * @param nrows
+	 * @param spatial_sim_matrix
+	 * @param SEC1labels
+	 * @param SEC2labels
+	 * @return
+	 */
+	public List<Double> fastSimCor(List<List<Pair<String, String>>> permutations, List<Pair<String,String>> oneperm, Double tempsimsum, int nrows, Double[][] spatial_sim_matrix, List<String> SEC1labels, List<String> SEC2labels)
 	{
+		List<Double> similarityval = new ArrayList<Double>(); //for storing result
 		//stop condition
-		if(SEC1labels.size() == 0)//I don't know which is smaller, there may be objects left 
+		if(SEC1labels.size()==0)
 		{
 			permutations.add(oneperm);
 			similarityval.add(tempsimsum/nrows);
-//			System.out.println("Adding:\n"+oneperm.toString());
-//			System.out.println("Similarity: " +tempsimsum/nrows);
+			if(SEC2labels.size() != 0)
+			{
+				System.out.println("WARNING: No correspondences where possible for the following SEC2:\n"+SEC2labels.toString());
+			}
+			return similarityval;
+		}
+		else if(SEC2labels.size()==0)
+		{
+			permutations.add(oneperm);
+			similarityval.add(tempsimsum/nrows);
+			//don't need to check whether SEC1labels is 0, because if it was, it would have never gotten in this condition
+			System.out.println("WARNING: No correspondences where possible for the following SEC1:\n"+SEC1labels.toString());
 			return similarityval;
 		}
 		else //there are still rows to go through
 		{
 			//need to first determine what the largest val is, and then go through row again to see which ones have the largest val
-			Double largestval = maxValue(spatial_sim_matrix[0]);
-
-			for(int icolumn=0; icolumn<spatial_sim_matrix[0].length;icolumn++)
+			Double largestval = maxValue(spatial_sim_matrix);
+			
+			for(int irow = 0; irow<spatial_sim_matrix.length; irow++)
 			{
-				if(spatial_sim_matrix[0][icolumn].equals(largestval))
+				for(int icolumn=0; icolumn<spatial_sim_matrix[0].length;icolumn++)
 				{
-					//which association does this largest val have?
-					Pair<String,String> curassoc = new Pair<String,String>(SEC1labels.get(0), SEC2labels.get(icolumn));
+					if(spatial_sim_matrix[irow][icolumn].equals(largestval))
+					{
+						//which association does this largest val have?
+						Pair<String,String> curassoc = new Pair<String,String>(SEC1labels.get(irow), SEC2labels.get(icolumn));
 
-					//remove affected row and column, and then go on to the rest of the matrix
-					Double[][] next_simmatrix = removeFromMatrix(spatial_sim_matrix, 0, icolumn);
-					List<String> newSEC1 = new ArrayList<String>(SEC1labels);
-					newSEC1.remove(0);
-					//					System.out.println("newSEC1: " + newSEC1.toString());
-					List<String> newSEC2 = new ArrayList<String>(SEC2labels);
-					newSEC2.remove(icolumn);
-					//					System.out.println("newSEC2: " + newSEC2.toString());
-					List<Pair<String,String>> addedPerm = new ArrayList<Pair<String,String>>(oneperm);
-					addedPerm.add(curassoc);
+						//remove affected row and column, and then go on to the rest of the matrix
+						Double[][] next_simmatrix = removeFromMatrix(spatial_sim_matrix, irow, icolumn);
+						List<String> newSEC1 = new ArrayList<String>(SEC1labels);
+						newSEC1.remove(irow);
+						//					System.out.println("newSEC1: " + newSEC1.toString());
+						List<String> newSEC2 = new ArrayList<String>(SEC2labels);
+						newSEC2.remove(icolumn);
+						//					System.out.println("newSEC2: " + newSEC2.toString());
+						List<Pair<String,String>> addedPerm = new ArrayList<Pair<String,String>>(oneperm);
+						addedPerm.add(curassoc);
 
-					return hackTemporalSimilaritySimpleCorrespondence(permutations, similarityval, addedPerm, tempsimsum+largestval, nrows, next_simmatrix, newSEC1, newSEC2);
-				}				
+						return fastSimCor(permutations, addedPerm, tempsimsum+largestval, nrows, next_simmatrix, newSEC1, newSEC2);
+					}				
+				}
 			}
 		}
 		return similarityval;
+	}
+	
+	public Double [][] spatialSimilarityMatrix(CompressedSEC SEC1, CompressedSEC SEC2)
+	{
+		Double[][] similarity_matrix = new Double[SEC1.SECmatrix.size()][SEC2.SECmatrix.size()];
+		System.out.println("Comparing: ");
+		SEC1.printSEC(SEC1.getRelationStrings(), null);
+		System.out.println("To: ");
+		SEC2.printSEC(SEC2.getRelationStrings(), null);
+
+		//Every row of SEC1 is compared to every row of SEC2 to find the highest similarity.
+		int irow =0; //to keep track of where to store the similarity value in the matrix. 
+		for(List<String> irow_SEC1 : SEC1.SECmatrix)
+		{
+			int icolumn =0;
+			for(List<String> irow_SEC2 : SEC2.SECmatrix)
+			{
+				double max_similarity = 0; //maximum similarity for the comparison of the two rows
+				if(irow_SEC1.size() > irow_SEC2.size())
+				{					
+					max_similarity = max_spatial_row_similarity(irow_SEC1, irow_SEC2);
+				}
+				else //currow2 is bigger or of equal size as currow1
+				{
+					max_similarity = max_spatial_row_similarity(irow_SEC2, irow_SEC1);
+				}
+				similarity_matrix[irow][icolumn]=max_similarity;
+				icolumn++;
+			}
+			irow++;
+		}
+		return similarity_matrix;
 	}
 
 	/**
@@ -794,8 +749,8 @@ public class MongoPrologInterface7_h {
 	 */
 	public PermResults spatialSimilarityValue(Double[][] spatial_sim_matrix, List<String> SEC1labels, List<String> SEC2labels)
 	{
-		//nrows needs to be given as a constant because the recursive function will lose the rows in recursion
-		int nrows = spatial_sim_matrix.length;
+		//nrows needs to be given as a constant because the recursive function will lose the rows in recursion. Changed to ndimension because if the input is not matched according to dimension, there might be more columns than rows and then we want to divide by that.
+		int nmax_dimension = Math.max(spatial_sim_matrix.length, spatial_sim_matrix[0].length);
 		//variables that need to be given to recurse on
 		List<Pair<String,String>> oneperm = new ArrayList<Pair<String,String>>();
 
@@ -803,9 +758,7 @@ public class MongoPrologInterface7_h {
 		List<List<Pair<String, String>>> permutations_res = new ArrayList<List<Pair<String,String>>>();
 		List<Double> similarityval_res = new ArrayList<Double>();
 		//hackTemporalSimilaritySimpleCorrespondence(permutations_res, similarityval_res, oneperm, 0.0, nrows,spatial_sim_matrix, SEC1labels, SEC2labels);
-		greedySimilarityCorrespondence(permutations_res, similarityval_res, oneperm, 0.0, nrows, spatial_sim_matrix, SEC1labels, SEC2labels);
-		System.out.println("permutationres: " +permutations_res.toString());
-		System.out.println("similarityres: " + similarityval_res.toString());
+		greedySimCor(permutations_res, similarityval_res, oneperm, 0.0, nmax_dimension, spatial_sim_matrix, SEC1labels, SEC2labels);
 
 		PermResults result = new PermResults(permutations_res, similarityval_res);
 		//it may be that some of the permutations eventually lead to a lower similarity value, so take these out
@@ -865,20 +818,23 @@ public class MongoPrologInterface7_h {
 	 * @param ncols2
 	 * @return
 	 */
-	public Double[][] temporalSimilarityMatrix(DerivedSEC tSEC1, DerivedSEC tSEC2, int ncols1, int ncols2)
+	public Double[][] temporalSimilarityMatrix(DerivedSEC tSEC1, DerivedSEC tSEC2)
 	{
+		System.out.println("Comparing: ");
+		tSEC1.printSEC(tSEC1.getRelationStrings(), tSEC1.getTimeStrings());
+		System.out.println("To: ");
+		tSEC2.printSEC(tSEC2.getRelationStrings(), tSEC2.getTimeStrings());
+		
 		//compare all columns with all columns to construct similarity matrix. No shuffling needed.
-		Double[][] similarity_matrix = new Double[ncols2][ncols1];
+		Double[][] similarity_matrix = new Double[tSEC1.SECmatrix.get(0).size()][tSEC2.SECmatrix.get(0).size()];
 		int irow =0; //to keep track of where to store the similarity value in the matrix. 
-//		System.out.println("Comparing: ");
-//		tSEC1.printSEC(tSEC1.getTimeStrings(),tSEC1.getRelationStrings());
-//		System.out.println("To: ");
-//		tSEC2.printSEC(tSEC2.getTimeStrings(), tSEC2.getRelationStrings());
-		for(List<String> icol_SEC2 : tSEC2.SECmatrix) //a of theta
+		for(int icol1=0; icol1<tSEC1.SECmatrix.get(0).size(); icol1++) //a of theta
 		{
-			int icolumn =0;
-			for(List<String> icol_SEC1 : tSEC1.SECmatrix) //b of theta
+			int icolumn =0;//to keep track of where to store the similarity value in the matrix. 
+			for(int icol2=0; icol2<tSEC2.SECmatrix.get(0).size(); icol2++) //b of theta
 			{
+				List<String> icol_SEC1 = getColumnFrom2DList(tSEC1.SECmatrix, icol1);
+				List<String> icol_SEC2 = getColumnFrom2DList(tSEC2.SECmatrix, icol2);
 				//take the two current SEC columns and calculate the similarity value for the current cell of the matrix for that
 				similarity_matrix[irow][icolumn] = single_temporal_similarity(icol_SEC1, icol_SEC2);
 				icolumn++;
@@ -886,24 +842,6 @@ public class MongoPrologInterface7_h {
 			irow++;
 		}
 		return similarity_matrix;
-	}
-
-	/**
-	 * TODO NOT DONE. meant to write a simpler function that actually does what the authors of the paper do, but for now I'll use the similarityCorrespondence,
-	 * we can discuss the details at a later point.
-	 * 
-	 * @param temporalSimMatrix
-	 * @return
-	 */
-	public double temporalSimilaritySum(Double[][] temporalSimMatrix)
-	{
-		double sum=0;
-		//TODO unclear in paper what it conceptually means 
-		for(int i=0; i<temporalSimMatrix.length; i++)
-		{
-
-		}
-		return sum/temporalSimMatrix.length;
 	}
 
 	/**
@@ -932,13 +870,6 @@ public class MongoPrologInterface7_h {
 			max_rows = derived_SEC1.SECmatrix.size();
 		else
 			max_rows = derived_SEC2.SECmatrix.size();
-		
-		//how many columns is the max? need to fill smaller matrix with dummies
-		int max_cols = 0;
-		if (derived_SEC1.SECmatrix.get(0).size()>derived_SEC2.SECmatrix.get(0).size())
-			max_cols = derived_SEC1.SECmatrix.get(0).size();
-		else
-			max_cols = derived_SEC2.SECmatrix.get(0).size();
 
 		//produce similarity matrices for all permutations
 		for(int iperm=0; iperm < permutations.size(); iperm++)
@@ -947,35 +878,26 @@ public class MongoPrologInterface7_h {
 			DerivedSEC ordered_SEC2 = SemanticEventChains.reorderDerivedSEC(derived_SEC1,derived_SEC2, permutations.get(iperm));
 
 			//Because need to go through all the columns instead of rows now, need to have columns in lists, transpose.
-//			System.out.println(ordered_SEC2.SECmatrix.size());
-//			derived_SEC1.printSEC(derived_SEC1.getRelationStrings(), derived_SEC1.getTimeStrings());
-//			ordered_SEC2.printSEC(ordered_SEC2.getRelationStrings(), ordered_SEC2.getTimeStrings());
-			DerivedSEC tSEC1 = derived_SEC1.transposeSEC(max_rows, max_cols);
-			DerivedSEC tSEC2 = ordered_SEC2.transposeSEC(max_rows, max_cols);
-			int ncols1 = tSEC1.SECmatrix.size();
-			int ncols2 = tSEC2.SECmatrix.size();
+			DerivedSEC tSEC1 = derived_SEC1.extendWithDummySEC(max_rows);
+			DerivedSEC tSEC2 = ordered_SEC2.extendWithDummySEC(max_rows);
 
 			//compare all columns with all columns to construct similarity matrix. No shuffling needed.
-			Double[][] similarity_matrix = temporalSimilarityMatrix(tSEC1, tSEC2, ncols1, ncols2);
-			//			tSEC1.printSEC(tSEC1.getTimeStrings(), tSEC1.getRelationStrings());
-			//			tSEC2.printSEC(tSEC2.getTimeStrings(), tSEC2.getRelationStrings());
-			//			printMatrix(similarity_matrix, tSEC2.getTimeStrings(), tSEC1.getTimeStrings()); //SEC2 first because of transposition
-
-			//TODO change code so that don't need this transposing back and forth, but be careful that still need a function for adding dummies
-			Double[][] r_similarity_matrix = transposeMatrix(similarity_matrix);
-//			System.out.println("Temporal Similarity matrix: ");
-//			printMatrix(r_similarity_matrix, tSEC1.getTimeStrings(), tSEC2.getTimeStrings());
+			Double[][] similarity_matrix = temporalSimilarityMatrix(tSEC1, tSEC2);
+			System.out.println("temporal similarity matrix:");
+			printMatrix(similarity_matrix, tSEC1.getTimeStrings(), tSEC2.getTimeStrings()); //SEC2 first because of transposition
 
 			//compute final similarity value and correspondences
-			int nrows = r_similarity_matrix.length; //nrows needs to be given as a constant because the recursive function will lose the rows in recursion
+			int nmax_dimension = Math.max(similarity_matrix.length, similarity_matrix[0].length);
 			List<Pair<String,String>> oneperm = new ArrayList<Pair<String,String>>(); //variable to recurse on
-
 			//variables for storing results
 			List<List<Pair<String, String>>> permutations_res = new ArrayList<List<Pair<String,String>>>();
-			List<Double> similarityval_res = hackTemporalSimilaritySimpleCorrespondence(permutations_res, new ArrayList<Double>(), oneperm, 0.0, nrows, r_similarity_matrix, tSEC1.getTimeStrings(), tSEC2.getTimeStrings());
+			List<Double> similarityval_res = fastSimCor(permutations_res, oneperm, 0.0, nmax_dimension, similarity_matrix, tSEC1.getTimeStrings(), tSEC2.getTimeStrings());
+//			//this finds better solutions but is just too slow: TODO maybe reimplementation can make it much faster
+//			List<Double> similarityval_res = new ArrayList<Double>();
+//			greedySimCor(permutations_res, similarityval_res, oneperm, 0.0, nrows, r_similarity_matrix, tSEC1.getTimeStrings(), tSEC2.getTimeStrings());
 			
 //			System.out.println("all permutationres temporal: " +permutations_res.toString());
-//			System.out.println("all similarityres temporal: " + similarityval_res.toString());
+			System.out.println("all similarityres temporal: " + similarityval_res.toString());
 			//compare with previous stored value: if it's greater, throw out all the other ones, if it's the same, add to the list, if it's smaller, ignore
 			for(int j=0; j<similarityval_res.size(); j++) //the values in similarityval_res are not perse all equally large, so can't test them as a group, need to loop over
 			{
@@ -1002,7 +924,11 @@ public class MongoPrologInterface7_h {
 				//if similarityval_res(j) smaller than max_sim, nothing happens
 			}
 		}
-		//print out results
+		System.out.println("Max. spatial similarity:" + max_spat_sim);
+		System.out.println("Max. temporal similarity:" + max_temp_sim);
+		System.out.println("for spatial permutations: " + max_spat_permutation.toString());
+		System.out.println("and temporal permutations: " + max_temp_permutation.toString());
+		
 		SimTotalResults results = new SimTotalResults(max_spat_permutation, max_temp_permutation, max_spat_sim, max_temp_sim);
 		return results;
 	}
@@ -1119,51 +1045,31 @@ public class MongoPrologInterface7_h {
 		
 		//FILL SEC AND MAKE DERIVED AND COMPRESSED VERSIONS
 //		newSEC.getOSEC().printNodeMap();
-		newSEC.constructDerivedSEC(newSEC.getOSEC());
-		newSEC.constructCompressedSEC(newSEC.getDSEC());
-//		POUR3.getOSEC().printSEC(POUR3.getOSEC().getRelationStrings(), POUR3.getOSEC().getTimeStrings());
-//		POUR3.getDSEC().printSEC(POUR3.getDSEC().getRelationStrings(), POUR3.getDSEC().getTimeStrings());
-//		POUR3.getCSEC().printSEC(POUR3.getDSEC().getRelationStrings(), POUR3.getDSEC().getTimeStrings());
-		
+		DerivedSEC dsec = newSEC.constructDerivedSEC(newSEC.getOSEC());
+		newSEC.constructCompressedSEC(dsec);
+		newSEC.getDSEC().printSEC(newSEC.getDSEC().getRelationStrings(), newSEC.getDSEC().getTimeStrings());
+		newSEC.getCSEC().printSEC(newSEC.getCSEC().getRelationStrings(), null);
 		return newSEC;
+	
 	}
 	
 	public static List<Double> compareEpisodes(String episode1, String episode2) throws JSONException, IOException
 	{
 		System.out.println("Comparing " + episode1 + " and " + episode2);
-		MongoPrologInterface7_h mpi1 = new MongoPrologInterface7_h(episode1);
-		MongoPrologInterface7_h mpi2 = new MongoPrologInterface7_h(episode2);
+		MongoPrologInterface mpi1 = new MongoPrologInterface(episode1);
+		MongoPrologInterface mpi2 = new MongoPrologInterface(episode2);
 		
 		//CONVERT EPISODE TO EVENT GRAPHS AND MAKE SEC
 		SemanticEventChains SEC1 = mpi1.processEpisodeToSEC();
 		SemanticEventChains SEC2 = mpi2.processEpisodeToSEC();
-		
-		//Check whether determining similarity the old-fashioned way is possible
-		int SEC1_nrows = SEC1.getDSEC().SECmatrix.size();
-		int SEC2_nrows = SEC2.getDSEC().SECmatrix.size();
-//		System.out.println("SEC1: nrows = " + SEC1_nrows + ", ncols = " + SEC1_ncols);
-//		System.out.println("SEC2: nrows = " + SEC2_nrows + ", ncols = " + SEC2_ncols);
-		//for ordering how to compute similarity
-		SemanticEventChains SECo1 = null;
-		SemanticEventChains SECo2 = null;
-		if(SEC1_nrows > SEC2_nrows) //if A more rows than B
-		{
-				SECo1 = SEC2;
-				SECo2 = SEC1;
-		}
-		else //A and B equal amount of rows
-		{
-				SECo1 = SEC1;
-				SECo2 = SEC2;
-		}
-		
+				
 		//SPATIAL SIMILARITY MATRIX
-		Double[][] spatial_sim_m = mpi1.spatialSimilarityMatrix(SECo1.getCSEC(), SECo2.getCSEC());
+		Double[][] spatial_sim_m = mpi1.spatialSimilarityMatrix(SEC1.getCSEC(), SEC2.getCSEC());
 		System.out.println("Spatial similarity matrix:");
-		printMatrix(spatial_sim_m, SECo1.getCSEC().getRelationStrings(), SECo2.getCSEC().getRelationStrings());
+		printMatrix(spatial_sim_m, SEC1.getCSEC().getRelationStrings(), SEC2.getCSEC().getRelationStrings());
 		//TEMPORAL SIMILARITY MATRIX
-		PermResults permutations = mpi1.spatialSimilarityValue(spatial_sim_m, SECo1.getCSEC().getRelationStrings(), SECo2.getCSEC().getRelationStrings());
-		SimTotalResults allresults = mpi1.temporalSimilarityValue(SECo1.getDSEC(), SECo2.getDSEC(), permutations);
+		PermResults permutations = mpi1.spatialSimilarityValue(spatial_sim_m, SEC1.getCSEC().getRelationStrings(), SEC2.getCSEC().getRelationStrings());
+		SimTotalResults allresults = mpi1.temporalSimilarityValue(SEC1.getDSEC(), SEC2.getDSEC(), permutations);
 		List<Double> simvals = new ArrayList<Double>();
 		simvals.add(allresults.max_spat_sim);
 		simvals.add(allresults.max_temp_sim);
@@ -1188,6 +1094,8 @@ public class MongoPrologInterface7_h {
 			//make matrix for similarities between episodes
 			Double[][] totalsim_spat = new Double[EPISODES.size()][EPISODES.size()];
 			Double[][] totalsim_temp = new Double[EPISODES.size()][EPISODES.size()];
+			
+//			List<Double> simvals = compareEpisodes("acat_move2", "acat_move3"); //1=spatial, 2=temporal
 			
 			int row = 0; //to keep track of at which row you are
 			int column = 1;
@@ -1423,4 +1331,104 @@ public class MongoPrologInterface7_h {
 		}
 		return newmatrix;
 	}
+	
+	/**
+	 * Returns the column (2nd dimension of the nested arraylist) at index i
+	 * @param arraylist
+	 * @param index
+	 * @return
+	 */
+	public static <T> List<T> getColumnFrom2DList(List<List<T>> arraylist, int index)
+	{
+		List<T> column = new ArrayList<T>();
+		for(List<T> irow : arraylist)
+		{
+			column.add(irow.get(index));
+		}
+		return column;
+	}
 }
+	//########################################################################
+	//## NO LONGER USED FUNCTIONS 											##
+	//########################################################################
+//
+//	/**
+//	 * This function has been replaced by greedySimCor, which checks the overall max. value in the remaining matrix instead of row by row.
+//	 * That has the effect that it no longer matters whether there are more rows than columns (wouldn't work with this one) or not. It is
+//	 * less efficient though, since it takes an extra for-loop to compute the max. of the matrix instead of just one vector.
+//	 * 
+//	 * Loops over rows recursively to find row/column correspondence. Splits off to multiple if more than one possibility in a row.
+//	 * Computes final spatial similarity values for all the possible correspondence choices if two columns have the same big value for one row. 
+//	 * The value is the average value of the highest similarities across rows of the similarity matrix.
+//	 * 
+//	 * WARNING: SEC1 (rows) should always be equal to or smaller than SEC2 in size! Otherwise the way to compute similarity doesn't really make sense.
+//	 * Decide what to do when number of rows not equal --> 1) ignore inequality and take the smaller one as the row for the correspondence, so the extra columns 
+//	 * will just be left over. 2) Take the largest one as row for correspondence and fill up remaining similarity values with 0 (equivalent to filling up
+//	 * with dummies. May make sense that actions that involve more objects changing are different and this should be reflected in the similarity value,
+//	 * but maybe unrelated things are going on at the same time --> how do we know? + a BIGGER issue is that just by chance the last object(s) will never be
+//	 * matched even if they actually correspond much better)
+//	 * For now implemented option 1 because that first came into mind. Can implement 2) later too and compare results if desirable.
+//	 * TODO this algorithm is not guaranteed to find the optimal solution for the correspondence problem: if an earlier row Did have a single corresponding
+//	 * highest column, a later row will never be able to associate with that column because it will never be available, even if the overall resulting similarity would be higher.
+//	 * TODO right now the whole process only works if the same SEC has equal or smaller number of rows AND equal or smaller number of columns compared to the other. Need
+//	 * the row constraint for this function and the column constraint for the temporal similarity matrix. If they are not the same, the order in the permutationlist will be false.
+//	 * I can solve this by changing the order in which I input the correspondence pairs (it's easy to check which SEC has fewer columns. I should do this in the wrap function and
+//	 * give it here as a boolean.
+//	 * 
+//	 * @param permutations
+//	 * @param similarityvalue
+//	 * @param spatial_sim_matrix_left
+//	 * @param SEC1labels_left
+//	 * @param SEC2labels_left
+//	 */
+//	public void similarityCorrespondence(List<List<Pair<String, String>>> permutations, List<Double> similarityvalues, List<Pair<String,String>> oneperm, Double tempsimsum, int nrows, Double[][] spatial_sim_matrix_left, List<String> SEC1labels_left, List<String> SEC2labels_left)
+//	{
+//		//print matrix to inspect progression on search
+//		//		printMatrix(spatial_sim_matrix_left, SEC1labels_left, SEC2labels_left);
+//		//stop condition
+//		if(SEC1labels_left.size()==0)//I don't know which is smaller, there may be objects left 
+//		{
+//			permutations.add(oneperm);
+//			similarityvalues.add(tempsimsum/nrows);
+////			System.out.println("Adding:\n"+oneperm.toString());
+////			System.out.println("Similarity value: " +tempsimsum/nrows);
+//		}
+//		else if(SEC2labels_left.size()==0)
+//		{
+//			System.err.println("WARNING: SEC2 is smaller than SEC1, with the size checks in the comparison function this should never happen.");
+//		}
+//		else //there are still labels left to correspond
+//		{
+//			//Determine max value by sorting a copy of the row and looking at the end TODO Collections.sort(temprow); Double largestval = temprow[temprow.length-1];
+//			//need to first determine what the largest val is, and then go through row again to see which ones have the largest val
+//			Double[] currow = spatial_sim_matrix_left[0];
+//			Double largestval = maxValue(currow);
+//
+//			String rowind = SEC1labels_left.get(0); //we know there has to be Some correspondent to this row
+//			for(int icolumn=0; icolumn<currow.length;icolumn++)
+//			{
+//				Double curval =currow[icolumn];
+//				if(curval.equals(largestval))
+//				{
+//					//					System.out.println("current tempsum=" + tempsimsum);
+//					//which association does this largest val have?
+//					String colind= SEC2labels_left.get(icolumn);
+//					Pair<String,String> curassoc = new Pair<String,String>(rowind, colind);
+//
+//					//remove affected row and column, and then go on to the rest of the matrix
+//					Double[][] next_simmatrix = removeFromMatrix(spatial_sim_matrix_left, 0, icolumn);
+//					List<String> newSEC1 = new ArrayList<String>(SEC1labels_left);
+//					newSEC1.remove(0);
+//					//					System.out.println("newSEC1: " + newSEC1.toString());
+//					List<String> newSEC2 = new ArrayList<String>(SEC2labels_left);
+//					newSEC2.remove(icolumn);
+//					//					System.out.println("newSEC2: " + newSEC2.toString());
+//					List<Pair<String,String>> addedPerm = new ArrayList<Pair<String,String>>(oneperm);
+//					addedPerm.add(curassoc);
+//
+//					similarityCorrespondence(permutations, similarityvalues, addedPerm, tempsimsum+largestval, nrows, next_simmatrix, newSEC1, newSEC2);
+//				}				
+//			}
+//		}
+//	}
+//
