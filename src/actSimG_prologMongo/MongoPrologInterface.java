@@ -14,6 +14,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -167,6 +168,14 @@ public class MongoPrologInterface {
 		EPISODES.add("acat_flip4");
 	}
 	
+	//edgeweights for the different relations, relations with higher weights have priority over those with lower weights
+	private static final Map<String, Double> RELATIONWEIGHTS = new HashMap<String, Double>();
+	static{
+		RELATIONWEIGHTS.put("contact", 0.0);
+		RELATIONWEIGHTS.put("insideof", 1.0);
+	}
+	
+	
 	/**
 	 * MongoPrologInterface constructor
 	 * @param collection 
@@ -309,7 +318,137 @@ public class MongoPrologInterface {
 		}
 		this.world = local_world;
 	}
+	
+	/**
+	 * 
+	 * 
+	 * @param model_name
+	 * @param timestamp
+	 * @return
+	 */
+	public double[] getModelPose(String model_name, long timestamp)
+	{
+		// echo for prolog
+		//		System.out.println("IJavaDB: getting models '" + model_name + "' pose at timestamp: " + timestamp);
 
+		// pose, X Y Z R P Y
+		double[] pose = new double[6];
+
+		//long timestamp = A_TIMESTAMP;
+
+		// query for getting the document at the given closest greater or equal than the timestamp
+		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", timestamp));
+		//BasicDBObject query = new BasicDBObject("timestamp", timestamp).append("models", new BasicDBObject("$exists","true"));
+
+		// fields for projecting only the pose of the given model name
+		BasicDBObject fields = new BasicDBObject("_id", 0);
+		fields.append("models", new BasicDBObject("$elemMatch", new BasicDBObject("name", model_name)));
+		fields.append("models.pos", 1);
+		fields.append("models.rot", 1);
+
+		// find the first document for the query (it should only be one)
+		DBObject first_doc = coll.findOne(query, fields);
+		// check that the query returned a document
+		if(first_doc == null)
+		{
+			System.out.println("getModelPose: could not find position of " + model_name + " for the specified timestamp " + timestamp);
+			return null;
+		}
+
+		// extracts characters and tokens from given string
+		JSONTokener tokener = new JSONTokener(first_doc.toString());
+		try {
+			// get the JSON root object
+			JSONObject root_obj = new JSONObject(tokener);
+			// get the models array (is only one value but of type array)
+			JSONArray models_array = root_obj.getJSONArray("models");
+			// get the position from the array
+			JSONObject json_pos = models_array.getJSONObject(0).getJSONObject("pos");
+			// get the orientation from the array
+			JSONObject json_rot = models_array.getJSONObject(0).getJSONObject("rot");
+
+			// set the pose
+			pose[0] = json_pos.getDouble("x");
+			System.out.println("real value: " + json_pos.getDouble("x"));
+			pose[1] = json_pos.getDouble("y");
+			pose[2] = json_pos.getDouble("z");
+
+			pose[3] = json_rot.getDouble("x");
+			pose[4] = json_rot.getDouble("y");
+			pose[5] = json_rot.getDouble("z");
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		return pose;
+	}
+
+	/**
+	 * 
+	 * 
+	 * @param model_name
+	 * @param timestamp
+	 * @return
+	 */
+	public Pose getModelPose2(String model_name, long timestamp)
+	{
+		// echo for prolog
+		//		System.out.println("IJavaDB: getting models '" + model_name + "' pose at timestamp: " + timestamp);
+
+		// pose, X Y Z R P Y
+		double[] pose = new double[6];
+		Vector3 pos = null;
+		Vector3 rot = null;
+
+		//long timestamp = A_TIMESTAMP;
+
+		// query for getting the document at the given closest greater or equal than the timestamp
+		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", timestamp));
+		//BasicDBObject query = new BasicDBObject("timestamp", timestamp).append("models", new BasicDBObject("$exists","true"));
+
+		// fields for projecting only the pose of the given model name
+		BasicDBObject fields = new BasicDBObject("_id", 0);
+		fields.append("models", new BasicDBObject("$elemMatch", new BasicDBObject("name", model_name)));
+		fields.append("models.pos", 1);
+		fields.append("models.rot", 1);
+
+		// find the first document for the query (it should only be one)
+		DBObject first_doc = coll.findOne(query, fields);
+		// check that the query returned a document
+		if(first_doc == null)
+		{
+			System.out.println("getModelPose: could not find position of " + model_name + " for the specified timestamp " + timestamp);
+			return null;
+		}
+
+		// extracts characters and tokens from given string
+		JSONTokener tokener = new JSONTokener(first_doc.toString());
+		try {
+			// get the JSON root object
+			JSONObject root_obj = new JSONObject(tokener);
+			// get the models array (is only one value but of type array)
+			JSONArray models_array = root_obj.getJSONArray("models");
+			// get the position from the array
+			JSONObject json_pos = models_array.getJSONObject(0).getJSONObject("pos");
+			// get the orientation from the array
+			JSONObject json_rot = models_array.getJSONObject(0).getJSONObject("rot");
+
+			// set the pose
+			pose[0] = json_pos.getDouble("x");
+			System.out.println("real value: " + json_pos.getDouble("x"));
+			pose[1] = json_pos.getDouble("y");
+			pose[2] = json_pos.getDouble("z");
+
+			pose[3] = json_rot.getDouble("x");
+			pose[4] = json_rot.getDouble("y");
+			pose[5] = json_rot.getDouble("z");
+			pos = new Vector3(pose[0], pose[1], pose[2]);
+			rot = new Vector3(pose[3], pose[4], pose[5]);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		return new Pose(pos,rot);
+	}
+	
 	/**
 	 * TODO used for inferring "inside of" relation. Need to consider whether look at model bounding box only or also links bounding box (?!)
 	 * 
@@ -378,7 +517,7 @@ public class MongoPrologInterface {
 	}
 	
 	/**
-	 * Checks whether the boundingbox of model2 is inside model1. Returns true if so and false otherwise.
+	 * Checks whether the center of model2 is inside model1. Returns true if so and false otherwise. //TODO this means that the center for objects (especially spheres and other content things) should be defined correctly in Gazebo
 	 * Defined one boundingbox to be inside the other if the absolute of bbox_min AND bbox_max of model2 are inside the absolute
 	 * of bbox_min and bbox_max of model1.
 	 * 
@@ -389,31 +528,34 @@ public class MongoPrologInterface {
 	 */
 	public boolean insideOfModelBoundingbox(String modelname1, String modelname2, long timestamp)
 	{
-		double[] box1 = getModelBoundingBox(modelname1, timestamp); //first 3 coordinates are the box_min and other 3 are the box_max
-		double[] box2 = getModelBoundingBox(modelname2, timestamp);
-		//boundingboxes can have negative coordinates, so need to use absolute values (which basically projects the objects into "positive" space
-		double min1_x = box1[0];
-		double min1_y = box1[1];
-		double min1_z = box1[2];
-		double min2_x = box2[0];
-		double min2_y = box2[1];
-		double min2_z = box2[2];
+		double[] bbox1 = getModelBoundingBox(modelname1, timestamp); //first 3 coordinates are the box_min and other 3 are the box_max
+		Pose pose1 = getModelPose2(modelname1, timestamp); //need to get pose of model1 for the rotation parameters
+		Pose pose2 = getModelPose2(modelname2, timestamp); //get pose of model2 so can do same transform as with bbox1
+		//bbox content is like this: min_x, min_y, min_z, max_x, max_y, max_z
+		double[][] box1_resize = {{bbox1[0], bbox1[1], bbox1[2]}, {bbox1[3], bbox1[4], bbox1[5]}}; //resizing boundingbox dimensions for multiplication with rotation matrix
+		double[] pose2_pos = {pose2.pos.x(), pose2.pos.y(), pose2.pos.z()};
+		Matrix bbox1_mat = new Matrix(box1_resize);
+		Matrix pose2_mat = new Matrix(pose2_pos, 1);
+		bbox1_mat.print(10, 4);
+		pose2_mat.print(10, 4);
 		
-		double max1_x = box1[3];
-		double max1_y = box1[4];
-		double max1_z = box1[5];
-		double max2_x = box2[3];
-		double max2_y = box2[4];
-		double max2_z = box2[5];
+		Matrix rotation_mat = rotationMatrix(pose1.rot.x(), pose1.rot.y(), pose1.rot.z()); //get rotation matrix for the container object
+		rotation_mat.transpose(); //this gives you the inverse of the rotationMatrix, which needs to be applied to the current object to get it back to align with the world axes
+		//rotate container object so that it's aligned with the world axis. Rotate the content object the same (if I would rotate it according to it's own axis, it might not be correct whether it's still in the container or not..?).
+		Matrix aligned_bbox1_mat = bbox1_mat.times(rotation_mat);
+		Matrix aligned_pose2_mat = pose2_mat.times(rotation_mat);
+		aligned_bbox1_mat.print(10, 4);
+		aligned_pose2_mat.print(10, 4);
 		
-		if(Math.abs(min1_x) <= Math.abs(min2_x) && Math.abs(min1_y) <= Math.abs(min2_y) && Math.abs(min1_z) <= Math.abs(min2_z) && Math.abs(max1_x) <= Math.abs(max2_x) && Math.abs(max1_y) <= Math.abs(max2_y) && Math.abs(max1_z) <= Math.abs(max2_z)) //the lower corner and upper corder are both inside the bounding box2
-		{
-			return true;
-		}
-		else
-		{
-			return false;
-		}
+		//check whether point is within box by checking for each axis whether minbox <= point <= maxbox
+		System.out.println(aligned_bbox1_mat.get(0, 0) <= aligned_pose2_mat.get(0,0));
+		System.out.println(aligned_pose2_mat.get(0, 0) <= aligned_bbox1_mat.get(1, 0));
+		System.out.println(aligned_bbox1_mat.get(0, 1) <= aligned_pose2_mat.get(0, 1)); 
+		System.out.println(aligned_pose2_mat.get(0, 1) <= aligned_bbox1_mat.get(1, 1)); 
+		System.out.println(aligned_bbox1_mat.get(0, 2) <= aligned_pose2_mat.get(0, 2)); 
+		System.out.println(aligned_pose2_mat.get(0, 2) <= aligned_bbox1_mat.get(1, 2));
+		// box_minx <= obj_x && obj_x <= box_maxx && box_miny <= obj_y && obj_y <= box_maxy && box_minz <= obj_z && obj_z <= box_maxz  
+		return (aligned_bbox1_mat.get(0, 0) <= aligned_pose2_mat.get(0,0) && aligned_pose2_mat.get(0, 0) <= aligned_bbox1_mat.get(1, 0) && aligned_bbox1_mat.get(0,1) <= aligned_pose2_mat.get(0,1) && aligned_pose2_mat.get(0, 1) <= aligned_bbox1_mat.get(1, 1) && aligned_bbox1_mat.get(0, 2) <= aligned_pose2_mat.get(0, 2) && aligned_pose2_mat.get(0, 2) <= aligned_bbox1_mat.get(1, 2));
 	}
 	
 	/**
@@ -447,7 +589,7 @@ public class MongoPrologInterface {
 	 * @param time
 	 * @return
 	 */
-	public void addNewNode(UndirectedGraph<String, DefaultEdge> graph, String nodename, long time)
+	public void addNewNode(SimpleWeightedGraph<String,DefaultWeightedEdge> graph, String nodename, long time)
 	{
 		//TODO this should not be necessary later? convert sphere_collisions. contact info on separate spheres is just too much, should be nicer workaround though
 		String newname;
@@ -475,7 +617,7 @@ public class MongoPrologInterface {
 	 * @param node2
 	 * @param time
 	 */
-	public void addNewEdge (UndirectedGraph<String, DefaultEdge> graph, String node1, String node2, long time)
+	public void addNewEdge (SimpleWeightedGraph<String,DefaultWeightedEdge> graph, String node1, String node2, String node1modelname, String node2modelname, long time)
 	{
 		//TODO this should not be necessary later? convert sphere_collisions. contact info on separate spheres is just too much, should be nicer workaround though
 		String new1;
@@ -489,17 +631,42 @@ public class MongoPrologInterface {
 		else
 			new2 = replaceNames(node2);
 
-		//TODO: insert checking for whether boundingbox is inside model and change graph label accordingly
-		
+		//TODO: insert checking for whether boundingbox is inside model and change graph label accordingly. Placed a random function here 
+		//because the current episodes don't Have boundingboxes so I can only test this later.
+//		if(insideOfModelBoundingbox(node1modelname, node2modelname, time))
+//		{
+//			edgeweight = RELATIONWEIGHTS.get("insideof").doubleValue;
+//		}
+//		else
+//		{
+//			edgeweight = RELATIONWIEGHTS.get("contact").doubleValue;
+//		}
+		Random rand=new Random();
+		double edgeweight=(double)rand.nextInt(3); //randomly the weight will be 0 or 1 or 2 //TODO replace random assignment with actual function
 		//add edge to graph if it doesn't exist yet
 		if(!graph.containsVertex(new1) || !graph.containsVertex(new2))
 		{
 			System.out.println("WARNING: one of the nodes doesn't exist yet. This should never occur in the current implementation!");
 		}
-		else if (!new1.equals(new2)) //cannot code for object(parts) touching themselves. With liquid spheres this will give problems because the undirectedGraph class doesn't allow selfconnections
+		else if (!new1.equals(new2)) //cannot code for object(parts) touching themselves. With liquid spheres this will give problems because the SimpleWeightedGraph class doesn't allow selfconnections. 
 		{
-			graph.addEdge(new1, new2);
-			//System.out.println(time + ": Added edge between " + new1 + " and " + new2);
+			if (!graph.containsEdge(new1, new2)) // checks whether the current edge already exists (which happens because of remapping and a bug in the logs which causes multiple contacts with the same object to exist)
+			{
+				DefaultWeightedEdge newedge = graph.addEdge(new1, new2);
+				graph.setEdgeWeight(newedge, edgeweight);
+//				System.out.println(time + ": Add edge " + new1 + "-" + new2 + ", weight " + edgeweight);
+			}
+			else //if edge exists but a relation with higher priority is detected, replace
+			{
+				DefaultWeightedEdge curedge = graph.getEdge(new1, new2);
+				if(graph.getEdgeWeight(curedge) < edgeweight)
+				{
+					graph.setEdgeWeight(curedge, edgeweight);
+//					System.out.println(time + ": Updating edge " + new1 + "-" + new2 + ", new weight " + edgeweight);
+				}
+				
+			}
+
 		}
 	}
 
@@ -518,19 +685,23 @@ public class MongoPrologInterface {
 	 * @param time
 	 * @throws JSONException
 	 */
-	public void constructGraph(UndirectedGraph<String, DefaultEdge> graph_rep, String[] levelnames, JSONArray curar, Map<String,String> parents, long time) throws JSONException
+	public void constructGraph(SimpleWeightedGraph<String,DefaultWeightedEdge> graph_rep, String[] levelnames, JSONArray curar, Map<String,String> parents, long time) throws JSONException
 	{
 		if(levelnames.length==1) //we've traversed all the levels we needed
 		{
 			String collname = parents.get("collisions"); //TODO make summarize option so will actually just use modelnames, only possible when the model of a collision can be tracked down (Andrei has to change logging system)
 			addNewNode(graph_rep, collname, time);
+//			System.out.println("Checking node " + collname);
+			String collmodelname = parents.get("models");
 
 			for(int i=0; i<curar.length();i++)//go through all the contacts of the current collision
 			{
 				JSONObject contact_obj = curar.getJSONObject(i);
 				String contactname = contact_obj.getString("name");
+//				System.out.println("Adding contact: " + contact_obj.toString());
+				String contactmodelname = "try"; //contact_obj.getString("coll_model_name");
 				addNewNode(graph_rep, contactname, time);
-				addNewEdge(graph_rep, collname, contactname, time); //TODO to add new relations, must label edges for tracking relations later
+				addNewEdge(graph_rep, collname, contactname, collmodelname, contactmodelname,  time); //TODO to add new relations, must label edges for tracking relations later
 			}
 		}
 		else //keep going down levels. Know where to go because levelnames are given.
@@ -559,10 +730,10 @@ public class MongoPrologInterface {
 	 * @throws JSONException
 	 * @throws IOException
 	 */
-	public List<UndirectedGraph<String,DefaultEdge>> contactEventsGraphs(List<Long> graphtimes) throws JSONException, IOException
+	public List<SimpleWeightedGraph<String,DefaultWeightedEdge>> contactEventsGraphs(List<Long> graphtimes) throws JSONException, IOException
 	{
 		//storing graphs
-		List<UndirectedGraph<String,DefaultEdge>> allgraphs = new ArrayList<UndirectedGraph<String,DefaultEdge>>();
+		List<SimpleWeightedGraph<String,DefaultWeightedEdge>> allgraphs = new ArrayList<SimpleWeightedGraph<String,DefaultWeightedEdge>>();
 		//know which levels to traverse
 		String[] levelnames = {"models","links","collisions","contacts"};
 
@@ -588,10 +759,11 @@ public class MongoPrologInterface {
 				long currenttime = db_jsonobj.getLong("timestamp")/1000000;
 
 				//setup variables to construct graph with
-				UndirectedGraph<String, DefaultEdge> i_graph =
-						new SimpleGraph<String, DefaultEdge>(DefaultEdge.class); //each timestamp will be represented by an undirected graph
+				SimpleWeightedGraph<String,DefaultWeightedEdge> i_graph =
+						new SimpleWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class); //each timestamp will be represented by an undirected graph
 				Map<String, String> parents = new HashMap<String, String>(); //keeps a list whose child the current collision is
 				constructGraph(i_graph, levelnames, cur_allmods, parents, currenttime);
+//				System.out.println("Graph " + currenttime + ": " + i_graph.toString());
 				//System.out.println(i_graph.toString());
 				//store graph
 				allgraphs.add(i_graph);
@@ -600,9 +772,9 @@ public class MongoPrologInterface {
 				//				//setup variables for dotexporter
 				//				StringNameProvider<String> p1=new StringNameProvider<String>();
 				//				IntegerNameProvider<String> p2=new IntegerNameProvider<String>();
-				//				StringEdgeNameProvider<DefaultEdge> p3 = new StringEdgeNameProvider<DefaultEdge>();
+				//				StringEdgeNameProvider<String> p3 = new StringEdgeNameProvider<String>();
 				//				//export graphs as dotfiles for visualization in graphviz, each file is approx. 0.5kB.
-				//				DOTExporter<String, DefaultEdge> exporter = new DOTExporter<String,DefaultEdge>(p1, p2, p3);
+				//				DOTExporter<String, String> exporter = new DOTExporter<String,String>(p1, p2, p3);
 				//				String targetDirectory = "/home/yfang/project_actSimG/printedgraphs/";
 				//				new File(targetDirectory).mkdirs();
 				//				exporter.export(new FileWriter(targetDirectory + "graph"+ i + ".dot"), i_graph);
@@ -624,16 +796,16 @@ public class MongoPrologInterface {
 	 * @param allgraphs
 	 * @return
 	 */
-	public List<UndirectedGraph<String,DefaultEdge>> extractMainGraphs(List<UndirectedGraph<String,DefaultEdge>> allgraphs, List<Long> graphtimes, List<Long> importanttimes)
+	public List<SimpleWeightedGraph<String,DefaultWeightedEdge>> extractMainGraphs(List<SimpleWeightedGraph<String,DefaultWeightedEdge>> allgraphs, List<Long> graphtimes, List<Long> importanttimes)
 	{
-		List<UndirectedGraph<String,DefaultEdge>> mainGraphs = new ArrayList<UndirectedGraph<String,DefaultEdge>>();
+		List<SimpleWeightedGraph<String,DefaultWeightedEdge>> mainGraphs = new ArrayList<SimpleWeightedGraph<String,DefaultWeightedEdge>>();
 
-		UndirectedGraph<String,DefaultEdge> prev_graph = null;
+		SimpleWeightedGraph<String,DefaultWeightedEdge> prev_graph = null;
 		//convert graph to adjacency matrix, them compute eigenvalues and check with previous eigenvalues whether graphstructure has changed
 		//if it changed, store graph. If it didn't, go to next one.
 		int i = 0;
 		double[] prev_eig =null;
-		for(UndirectedGraph<String,DefaultEdge> igraph : allgraphs)
+		for(SimpleWeightedGraph<String,DefaultWeightedEdge> igraph : allgraphs)
 		{
 			if (prev_graph == null) //always add the first graph
 			{
@@ -674,9 +846,9 @@ public class MongoPrologInterface {
 	 * @param graph
 	 * @return
 	 */
-	public double[] graphToEigenvalue(UndirectedGraph<String,DefaultEdge> graph)
+	public double[] graphToEigenvalue(SimpleWeightedGraph<String,DefaultWeightedEdge> graph)
 	{
-		double[][] matrix = adjacencyMatrix(graph); //TODO: add other relations
+		double[][] matrix = adjacencyMatrix(graph);
 		Matrix i_mat = new Matrix(matrix);
 		EigenvalueDecomposition eig_mat = i_mat.eig();
 		//printMatrix(matrix);
@@ -691,7 +863,7 @@ public class MongoPrologInterface {
 	 * @param graph
 	 * @return
 	 */
-	public double[][] adjacencyMatrix(UndirectedGraph<String, DefaultEdge> graph)
+	public double[][] adjacencyMatrix(SimpleWeightedGraph<String,DefaultWeightedEdge> graph)
 	{
 		VertexNameProvider<String> nameProvider = new IntegerNameProvider<String>();
 		for (String from : graph.vertexSet()) {
@@ -717,16 +889,16 @@ public class MongoPrologInterface {
 	 * @param matrix
 	 * @param graph
 	 */
-	private void adjacencyMatrixVertex(VertexNameProvider<String> nameProvider, String from, List<String> neighbors, double[][] matrix, UndirectedGraph<String, DefaultEdge> graph)
+	private void adjacencyMatrixVertex(VertexNameProvider<String> nameProvider, String from, List<String> neighbors, double[][] matrix, SimpleWeightedGraph<String,DefaultWeightedEdge> graph)
 	{
 		int fromName = Integer.parseInt(nameProvider.getVertexName(from));
-		//System.out.println(from + ": " + fromName); //check that the numbers and names here are the same as in the .dot file
+//		System.out.println(from + ": " + fromName); //check that the numbers and names here are the same as in the .dot file
 		for (String to : neighbors) //for each neighbor of the node "from"
 		{
 			//TODO once we have functions for determining spacial relations like above, rightof and things like that, can insert as a different number into the matrix
 			int toName = Integer.parseInt(nameProvider.getVertexName(to));
-			matrix[fromName-1][toName-1] = 1; //TODO code should depend on relation, not just 1
-			matrix[toName-1][fromName-1] = 1;
+			matrix[fromName-1][toName-1] = graph.getEdgeWeight(graph.getEdge(from, to)); //TODO code depends on the relation in the gaph (keeping todo here so I know where critical parts of this implementation are)
+			matrix[toName-1][fromName-1] = graph.getEdgeWeight(graph.getEdge(from, to));
 		}
 	}
 
@@ -745,9 +917,9 @@ public class MongoPrologInterface {
 	{
 		//OBTAINING EVENT AND MAIN GRAPHS1
 		List<Long> graphtimes = new ArrayList<Long>(); //for storing at which times graphs occurred
-		List<UndirectedGraph<String, DefaultEdge>> all_graphs = this.contactEventsGraphs(graphtimes);
+		List<SimpleWeightedGraph<String,DefaultWeightedEdge>> all_graphs = this.contactEventsGraphs(graphtimes);
 		List<Long> importanttimes = new ArrayList<Long>(); //for storing at which times important graphs occurred. This is nice to keep track of for printing later, So I actually know what timepoints the columns in the SECs correspond to
-		List<UndirectedGraph<String, DefaultEdge>> important_graphs = this.extractMainGraphs(all_graphs, graphtimes, importanttimes);
+		List<SimpleWeightedGraph<String,DefaultWeightedEdge>> important_graphs = this.extractMainGraphs(all_graphs, graphtimes, importanttimes);
 
 		//SEC PROCESSING, initialize SEC
 		SemanticEventChains newSEC = new SemanticEventChains(important_graphs, importanttimes);
@@ -814,29 +986,29 @@ public class MongoPrologInterface {
 			Double[][] totalsim_spat = new Double[EPISODES.size()][EPISODES.size()];
 			Double[][] totalsim_temp = new Double[EPISODES.size()][EPISODES.size()];
 			
-//			List<Double> simvals = compareEpisodes("acat_move2", "acat_move3"); //1=spatial, 2=temporal
+			List<Double> simvals = compareEpisodes("acat_move2", "acat_move3"); //1=spatial, 2=temporal
 			
-			int row = 0; //to keep track of at which row you are
-			int column = 1;
-			for(int i = 0; i<uniqueComparisons.size(); i++)
-			{
-				Pair<String,String> comp = uniqueComparisons.get(i);
-				List<Double> simvals = compareEpisodes(comp.getValue0(), comp.getValue1()); //1=spatial, 2=temporal
-				totalsim_spat[row][column] = simvals.get(0);
-				totalsim_temp[row][column] = simvals.get(1);
-				if(EPISODES.size()==column+1) //have to start filling the next row
-				{
-					row++;
-					column = row+1;
-				}
-				else
-				{
-					column++;
-				}
-			}
-			
-			MyUtil.printMatrix(totalsim_spat, EPISODES, EPISODES, "Spatial similarities:");
-			MyUtil.printMatrix(totalsim_temp, EPISODES, EPISODES, "Temporal similarities:");
+//			int row = 0; //to keep track of at which row you are
+//			int column = 1;
+//			for(int i = 0; i<uniqueComparisons.size(); i++)
+//			{
+//				Pair<String,String> comp = uniqueComparisons.get(i);
+//				List<Double> simvals = compareEpisodes(comp.getValue0(), comp.getValue1()); //1=spatial, 2=temporal
+//				totalsim_spat[row][column] = simvals.get(0);
+//				totalsim_temp[row][column] = simvals.get(1);
+//				if(EPISODES.size()==column+1) //have to start filling the next row
+//				{
+//					row++;
+//					column = row+1;
+//				}
+//				else
+//				{
+//					column++;
+//				}
+//			}
+//			
+//			MyUtil.printMatrix(totalsim_spat, EPISODES, EPISODES, "Spatial similarities:");
+//			MyUtil.printMatrix(totalsim_temp, EPISODES, EPISODES, "Temporal similarities:");
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -868,6 +1040,22 @@ public class MongoPrologInterface {
 				result.add(new Pair<String,String>(list.get(i), list.get(j)));
 			}
 		}
+		return result;
+	}
+	
+	public static Matrix rotationMatrix(double a, double b, double c)
+	{
+		double[][] rotmatrix =  new double[3][3];
+		rotmatrix[1][1] = Math.cos(a) * Math.cos(b);
+		rotmatrix[1][2] = Math.cos(a) * Math.sin(b) * Math.sin(c) - Math.sin(a) * Math.cos(c);
+		rotmatrix[1][3] = Math.cos(a) * Math.sin(b) * Math.cos(c) + Math.sin(a) * Math.sin(c);
+		rotmatrix[2][1] = Math.sin(a) * Math.cos(b);
+		rotmatrix[2][2] = Math.sin(a) * Math.sin(b) * Math.sin(c) + Math.cos(a) * Math.cos(c);
+		rotmatrix[2][3] = Math.sin(a) * Math.sin(b) * Math.cos(c) - Math.cos(a) * Math.sin(c);
+		rotmatrix[3][1] = -Math.sin(b);
+		rotmatrix[3][2] = Math.cos(b) * Math.sin(c);
+		rotmatrix[3][3] = Math.cos(b) * Math.cos(c);
+		Matrix result = new Matrix(rotmatrix);
 		return result;
 	}
 

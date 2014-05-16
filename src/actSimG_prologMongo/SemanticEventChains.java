@@ -11,10 +11,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.javatuples.Pair;
-import org.jgrapht.UndirectedGraph;
 import org.jgrapht.ext.IntegerNameProvider;
 import org.jgrapht.ext.VertexNameProvider;
-import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.DefaultWeightedEdge;
+import org.jgrapht.graph.*;
 
 /**
  * @author Zhou Fang, 04-2014, University of Bremen
@@ -23,7 +23,7 @@ import org.jgrapht.graph.DefaultEdge;
  */
 public class SemanticEventChains {
 
-	List<UndirectedGraph<String,DefaultEdge>> original_main_graphs;
+	List<SimpleWeightedGraph<String,DefaultWeightedEdge>> original_main_graphs;
 	private OriginalSEC oSEC;
 	private DerivedSEC dSEC;
 	private CompressedSEC cSEC;
@@ -38,7 +38,7 @@ public class SemanticEventChains {
 	 * @param main_graphs
 	 * @param time_labels
 	 */
-	public SemanticEventChains(List<UndirectedGraph<String,DefaultEdge>> main_graphs, List<Long> time_labels) //using generic type for labels because not sure yet whether row/column labels are always pairs, longs, or strings
+	public SemanticEventChains(List<SimpleWeightedGraph<String,DefaultWeightedEdge>> main_graphs, List<Long> time_labels) //using generic type for labels because not sure yet whether row/column labels are always pairs, longs, or strings
 	{
 		//Initialize variables for SEC
 		List<List<Integer>> matrix  = new ArrayList<List<Integer>>();
@@ -53,7 +53,7 @@ public class SemanticEventChains {
 
 		VertexNameProvider<String> nameProvider = new IntegerNameProvider<String>();
 		//for every column/timestamp/graph
-		for(UndirectedGraph<String,DefaultEdge> igraph : main_graphs)
+		for(SimpleWeightedGraph<String,DefaultWeightedEdge> igraph : main_graphs)
 		{
 			int nobjects = igraph.vertexSet().size();
 			//System.out.println("nobjects: " + nobjects);
@@ -102,7 +102,7 @@ public class SemanticEventChains {
 	 * 
 	 * @param main_graphs
 	 */
-	public void constructAllSEC(List<UndirectedGraph<String,DefaultEdge>> main_graphs)
+	public void constructAllSEC(List<SimpleWeightedGraph<String,DefaultWeightedEdge>> main_graphs)
 	{
 		constructOriginalSEC(main_graphs);
 		constructDerivedSEC();
@@ -118,14 +118,14 @@ public class SemanticEventChains {
 	 * 
 	 * @param main_graphs
 	 */
-	public void constructOriginalSEC(List<UndirectedGraph<String,DefaultEdge>> main_graphs)
+	public void constructOriginalSEC(List<SimpleWeightedGraph<String,DefaultWeightedEdge>> main_graphs)
 	{
 		//can't use int or double here because primitives are not supported by Generics.
 		VertexNameProvider<String> nameProvider = new IntegerNameProvider<String>();
 		//for every important graph/timestep
 		for(int i = 0; i< main_graphs.size(); i++)
 		{
-			UndirectedGraph<String,DefaultEdge> igraph = main_graphs.get(i);
+			org.jgrapht.graph.SimpleWeightedGraph<String,DefaultWeightedEdge> igraph = main_graphs.get(i);
 			// assign ids in vertex set iteration order. Checked and the order of numbers will be WRONG if don't do this first.
 			for (String node : igraph.vertexSet()) 
 			{
@@ -133,9 +133,9 @@ public class SemanticEventChains {
 			}
 
 			//these are the only non-zero elements in this column
-			Set<DefaultEdge> edges = igraph.edgeSet(); 
+			Set<DefaultWeightedEdge> edges = igraph.edgeSet(); 
 			//Collection<String> test = Collections.unmodifiableSet(new Set<String>());
-			for(DefaultEdge iedge : edges)
+			for(DefaultWeightedEdge iedge : edges)
 			{
 				String from = igraph.getEdgeSource(iedge);
 				String to = igraph.getEdgeTarget(iedge);
@@ -153,7 +153,7 @@ public class SemanticEventChains {
 				{
 					cur_row_index = new Pair<Integer,Integer>(fromNumber, toNumber); 
 				}
-				Integer rel_value = new Integer(1); //TODO can later take this value from a variable to accommodate more types of relationships
+				Integer rel_value = new Integer((int)igraph.getEdgeWeight(igraph.getEdge(from, to))); //TODO part of encoding more relations
 				int currentindex = labelIndex(cur_row_index, this.oSEC.relationlabels);
 				this.oSEC.SECmatrix.get(currentindex).set(i, rel_value);
 			}
