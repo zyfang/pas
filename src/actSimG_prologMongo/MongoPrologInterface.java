@@ -171,8 +171,9 @@ public class MongoPrologInterface {
 	//edgeweights for the different relations, relations with higher weights have priority over those with lower weights
 	private static final Map<String, Double> RELATIONWEIGHTS = new HashMap<String, Double>();
 	static{
-		RELATIONWEIGHTS.put("contact", 0.0);
-		RELATIONWEIGHTS.put("insideof", 1.0);
+		RELATIONWEIGHTS.put("contact", 1.0);
+		RELATIONWEIGHTS.put("supportedby", 2.0);
+		RELATIONWEIGHTS.put("insideof", 3.0);
 	}
 	
 	
@@ -318,69 +319,6 @@ public class MongoPrologInterface {
 		}
 		this.world = local_world;
 	}
-	
-	/**
-	 * 
-	 * 
-	 * @param model_name
-	 * @param timestamp
-	 * @return
-	 */
-	public double[] getModelPose(String model_name, long timestamp)
-	{
-		// echo for prolog
-		//		System.out.println("IJavaDB: getting models '" + model_name + "' pose at timestamp: " + timestamp);
-
-		// pose, X Y Z R P Y
-		double[] pose = new double[6];
-
-		//long timestamp = A_TIMESTAMP;
-
-		// query for getting the document at the given closest greater or equal than the timestamp
-		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", timestamp));
-		//BasicDBObject query = new BasicDBObject("timestamp", timestamp).append("models", new BasicDBObject("$exists","true"));
-
-		// fields for projecting only the pose of the given model name
-		BasicDBObject fields = new BasicDBObject("_id", 0);
-		fields.append("models", new BasicDBObject("$elemMatch", new BasicDBObject("name", model_name)));
-		fields.append("models.pos", 1);
-		fields.append("models.rot", 1);
-
-		// find the first document for the query (it should only be one)
-		DBObject first_doc = coll.findOne(query, fields);
-		// check that the query returned a document
-		if(first_doc == null)
-		{
-			System.out.println("getModelPose: could not find position of " + model_name + " for the specified timestamp " + timestamp);
-			return null;
-		}
-
-		// extracts characters and tokens from given string
-		JSONTokener tokener = new JSONTokener(first_doc.toString());
-		try {
-			// get the JSON root object
-			JSONObject root_obj = new JSONObject(tokener);
-			// get the models array (is only one value but of type array)
-			JSONArray models_array = root_obj.getJSONArray("models");
-			// get the position from the array
-			JSONObject json_pos = models_array.getJSONObject(0).getJSONObject("pos");
-			// get the orientation from the array
-			JSONObject json_rot = models_array.getJSONObject(0).getJSONObject("rot");
-
-			// set the pose
-			pose[0] = json_pos.getDouble("x");
-			System.out.println("real value: " + json_pos.getDouble("x"));
-			pose[1] = json_pos.getDouble("y");
-			pose[2] = json_pos.getDouble("z");
-
-			pose[3] = json_rot.getDouble("x");
-			pose[4] = json_rot.getDouble("y");
-			pose[5] = json_rot.getDouble("z");
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-		return pose;
-	}
 
 	/**
 	 * 
@@ -434,7 +372,6 @@ public class MongoPrologInterface {
 
 			// set the pose
 			pose[0] = json_pos.getDouble("x");
-			System.out.println("real value: " + json_pos.getDouble("x"));
 			pose[1] = json_pos.getDouble("y");
 			pose[2] = json_pos.getDouble("z");
 
@@ -521,6 +458,8 @@ public class MongoPrologInterface {
 	 * Defined one boundingbox to be inside the other if the absolute of bbox_min AND bbox_max of model2 are inside the absolute
 	 * of bbox_min and bbox_max of model1.
 	 * 
+	 * TODO need to test and debug this function, but first need to get data again where the boundingbox exists
+	 * 
 	 * @param modelname1
 	 * @param modelname2
 	 * @param timestamp
@@ -548,7 +487,7 @@ public class MongoPrologInterface {
 		aligned_pose2_mat.print(10, 4);
 		
 		//check whether point is within box by checking for each axis whether minbox <= point <= maxbox
-		System.out.println(aligned_bbox1_mat.get(0, 0) <= aligned_pose2_mat.get(0,0));
+		System.out.println(aligned_bbox1_mat.get(0, 0) <= aligned_pose2_mat.get(0, 0));
 		System.out.println(aligned_pose2_mat.get(0, 0) <= aligned_bbox1_mat.get(1, 0));
 		System.out.println(aligned_bbox1_mat.get(0, 1) <= aligned_pose2_mat.get(0, 1)); 
 		System.out.println(aligned_pose2_mat.get(0, 1) <= aligned_bbox1_mat.get(1, 1)); 
@@ -556,6 +495,27 @@ public class MongoPrologInterface {
 		System.out.println(aligned_pose2_mat.get(0, 2) <= aligned_bbox1_mat.get(1, 2));
 		// box_minx <= obj_x && obj_x <= box_maxx && box_miny <= obj_y && obj_y <= box_maxy && box_minz <= obj_z && obj_z <= box_maxz  
 		return (aligned_bbox1_mat.get(0, 0) <= aligned_pose2_mat.get(0,0) && aligned_pose2_mat.get(0, 0) <= aligned_bbox1_mat.get(1, 0) && aligned_bbox1_mat.get(0,1) <= aligned_pose2_mat.get(0,1) && aligned_pose2_mat.get(0, 1) <= aligned_bbox1_mat.get(1, 1) && aligned_bbox1_mat.get(0, 2) <= aligned_pose2_mat.get(0, 2) && aligned_pose2_mat.get(0, 2) <= aligned_bbox1_mat.get(1, 2));
+	}
+	
+	/**
+	 * Checks whether model2 is supported by model1. Returns true if so and false otherwise. 
+	 * Supported by is defined as in contact and above (like in CRAM)
+	 * 
+	 * @param modelname1
+	 * @param modelname2
+	 * @param timestamp
+	 * @return
+	 */
+	public boolean supportedBy(String modelname1, String modelname2, long timestamp)
+	{
+		//get bounding box model 1
+		double[] bbox1 = getModelBoundingBox(modelname1, timestamp);
+		//get location of the centerpoint model 2
+		Pose pose2 = getModelPose2(modelname2, timestamp);
+//		System.out.println(modelname1 + " has max bounding box z " + bbox1[5]);
+//		System.out.println(modelname2 + " has z pose " + pose2.pos.z());
+		
+		return bbox1[5] <= pose2.pos.z();
 	}
 	
 	/**
@@ -631,18 +591,26 @@ public class MongoPrologInterface {
 		else
 			new2 = replaceNames(node2);
 
+		double edgeweight;
 		//TODO: insert checking for whether boundingbox is inside model and change graph label accordingly. Placed a random function here 
 		//because the current episodes don't Have boundingboxes so I can only test this later.
-//		if(insideOfModelBoundingbox(node1modelname, node2modelname, time))
+		
+//		Random rand=new Random(); //temporarily random
+//		edgeweight = (double)rand.nextInt(3); //randomly the weight will be 0 or 1 or 2 //TODO replace random assignment with actual function
+//		if(edgeweight ==2)//if(insideOfModelBoundingbox(node1modelname, node2modelname, time)) //Andrei said that the boundingbox for the spheres model is totally off (way too big), so they won't be recognized as within the mug. I'm taking the center now and hope that works. Otherwise I'll have to check whether the link is inside the model1 boundingbox rather than the whole model2. TODO: think about whether want to check this on link level or on model level. How can I make this as general as possible?
 //		{
-//			edgeweight = RELATIONWEIGHTS.get("insideof").doubleValue;
+//			edgeweight = RELATIONWEIGHTS.get("insideof").doubleValue();
 //		}
-//		else
+//		if(edgeweight ==1)//if(supportedBy(node1modelname, node2modelname, time) || supportedBy(node2modelname, node1modelname, time)) //TODO need to throw around graph representation sos it will be a directed graph. Right now even the supported by and inside relations can't distinguish who is supported and who is doing the supporting.
 //		{
-//			edgeweight = RELATIONWIEGHTS.get("contact").doubleValue;
+//			
+//			edgeweight = RELATIONWEIGHTS.get("supportedby").doubleValue();
 //		}
-		Random rand=new Random();
-		double edgeweight=(double)rand.nextInt(3); //randomly the weight will be 0 or 1 or 2 //TODO replace random assignment with actual function
+//		else if(edgeweight ==0)
+//		{
+			edgeweight = RELATIONWEIGHTS.get("contact").doubleValue();
+//		}
+
 		//add edge to graph if it doesn't exist yet
 		if(!graph.containsVertex(new1) || !graph.containsVertex(new2))
 		{
@@ -673,6 +641,11 @@ public class MongoPrologInterface {
 	/**
 	 * Function (recursive) for traversing two nested JSONArrays to the required level while keeping track of parents and 
 	 * constructing an appropriate graph for each timestamp.
+	 * TODO: for now relations are only checked as a subtype of contact: the function loops through the contact collisions and checks what kind of relationship exists.
+	 * This might give problems for insideOf if somehow the contacts are not OK. (In principle one would expect the content to somehow contact the container).
+	 * SupportedBy and Holding are also subtypes of contact.
+	 * However, if we would like to have spatial relations etc., we should cycle through each model (regardless of contact) to see whether this relation exists. This will have to
+	 * be in another function since this one is recursive and specifically meant to get contacts.
 	 * 
 	 * CALLED BY: 	contactEventsGraphs
 	 * CALLS: 		addNewNode
@@ -693,13 +666,12 @@ public class MongoPrologInterface {
 			addNewNode(graph_rep, collname, time);
 //			System.out.println("Checking node " + collname);
 			String collmodelname = parents.get("models");
-
 			for(int i=0; i<curar.length();i++)//go through all the contacts of the current collision
 			{
 				JSONObject contact_obj = curar.getJSONObject(i);
 				String contactname = contact_obj.getString("name");
 //				System.out.println("Adding contact: " + contact_obj.toString());
-				String contactmodelname = "try"; //contact_obj.getString("coll_model_name");
+				String contactmodelname = contact_obj.getString("coll_model_name");
 				addNewNode(graph_rep, contactname, time);
 				addNewEdge(graph_rep, collname, contactname, collmodelname, contactmodelname,  time); //TODO to add new relations, must label edges for tracking relations later
 			}
@@ -744,6 +716,7 @@ public class MongoPrologInterface {
 		fields.append("timestamp", 1);
 		fields.append("models.links.name", 1);
 		fields.append("models.links.collisions.name", 1);
+		fields.append("models.links.collisions.contacts.coll_model_name", 1);
 
 		//DBCursor doccursor = coll.find(query,fields).limit(100);
 		DBCursor doccursor = coll.find(query,fields);
@@ -925,7 +898,7 @@ public class MongoPrologInterface {
 		SemanticEventChains newSEC = new SemanticEventChains(important_graphs, importanttimes);
 		//FILL SEC AND MAKE DERIVED AND COMPRESSED VERSIONS
 		newSEC.constructAllSEC(important_graphs);
-//		newSEC.getOSEC().printNodeMap();
+		newSEC.getOSEC().printNodeMap();
 		newSEC.getDSEC().printSEC(newSEC.getDSEC().getRelationStrings(), newSEC.getDSEC().getTimeStrings());
 		newSEC.getCSEC().printSEC(newSEC.getCSEC().getRelationStrings(), null);
 		return newSEC;
@@ -957,7 +930,8 @@ public class MongoPrologInterface {
 		SemanticEventChains SEC2 = mpi2.processEpisodeToSEC();
 				
 		//SPATIAL SIMILARITY MATRIX
-		PermResults permutations = SEC1.spatialSimilarityValueWith(SEC2.getCSEC());
+		boolean exactMatch = true;
+		PermResults permutations = SEC1.spatialSimilarityValueWith(SEC2.getCSEC(), exactMatch);
 		
 		//TEMPORAL SIMILARITY MATRIX
 		SimTotalResults allresults = SEC1.temporalSimilarityValueWith(SEC2.getDSEC(), permutations);

@@ -20,9 +20,9 @@ public class DerivedSEC extends SEC{
 	public final List<String> timelabels;
 	public List<List<String>> SECmatrix;
 
-	public DerivedSEC(List<List<String>> _matrix, List<Pair<Integer, Integer>> _relations, List<String> _times)
+	public DerivedSEC(List<List<String>> _matrix, List<Pair<Integer, Integer>> _relations, List<String> _times, Map<Integer,String> _nodenamemap)
 	{
-		super(_relations);
+		super(_relations, _nodenamemap);
 		this.SECmatrix = _matrix;
 		this.timelabels = _times;
 	}
@@ -118,16 +118,16 @@ public class DerivedSEC extends SEC{
 	 * @param SEC
 	 */
 	@Override
-	public void printSEC(List<String> rlabels, List<String> clabels) 
+	public void printSEC() 
 	{
 		System.out.println("Derived SEC:");
 		//print column labels
-		System.out.println("\t" + clabels.toString());
+		System.out.println("\t" + this.getTimeStrings());
 
 		//print row labels + data
-		for(int irow = 0; irow < rlabels.size(); irow++)
+		for(int irow = 0; irow < this.getTimeStrings().size(); irow++)
 		{
-			System.out.print(rlabels.get(irow).toString() + "\t");
+			System.out.print(this.getTimeStrings().get(irow).toString() + "\t");
 			System.out.println(this.SECmatrix.get(irow).toString());
 		}
 	}

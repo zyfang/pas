@@ -207,7 +207,7 @@ public class SemanticEventChains {
 			String newlabel = this.getOSEC().timelabels.get(i-1).toString() + "-" + this.getOSEC().timelabels.get(i).toString();
 			timelabels.add(newlabel);
 		}
-		DerivedSEC newdsec = new DerivedSEC(dsec_matrix, rlabels, timelabels);
+		DerivedSEC newdsec = new DerivedSEC(dsec_matrix, rlabels, timelabels, this.getOSEC().nodenamemap);
 		this.dSEC = newdsec;
 	}
 
@@ -237,7 +237,7 @@ public class SemanticEventChains {
 			//add new list to the matrix
 			csec_matrix.add(newlist);
 		}
-		CompressedSEC newcsec = new CompressedSEC(csec_matrix, this.getDSEC().relationlabels);
+		CompressedSEC newcsec = new CompressedSEC(csec_matrix, this.getDSEC().relationlabels, this.getOSEC().nodenamemap);
 		this.cSEC = newcsec;
 	}
 
@@ -279,7 +279,7 @@ public class SemanticEventChains {
 				reorder_rellabels.add(sec2.relationlabels.get(i));
 			}
 		}
-		return new DerivedSEC(reordered_matrix, reorder_rellabels, sec2.timelabels);
+		return new DerivedSEC(reordered_matrix, reorder_rellabels, sec2.timelabels, sec2.nodenamemap);
 	}
 
 	/**
@@ -376,12 +376,11 @@ public class SemanticEventChains {
 //		//print matrix to inspect progression on search
 //		printMatrix(spatial_sim_matrix_left, SEC1labels_left, SEC2labels_left);
 		//stop condition
-		System.out.println(tempsimsum);
 		if(SEC1labels_left.size()==0)
 		{
 			permutations.add(oneperm);
 			similarityvalues.add(tempsimsum/nrows);
-			System.out.println("tempsimsum/nrows: " + tempsimsum + "/" + nrows + "=" + tempsimsum/nrows);
+//			System.out.println("tempsimsum/nrows: " + tempsimsum + "/" + nrows + "=" + tempsimsum/nrows);
 			if(SEC2labels_left.size() != 0)
 			{
 				System.out.println("WARNING: No correspondences where possible for the following SEC2:\n"+SEC2labels_left.toString());
@@ -491,7 +490,7 @@ public class SemanticEventChains {
 						List<String> newSEC2 = new ArrayList<String>(SEC2labels);
 						newSEC2.remove(icolumn);
 						//					System.out.println("newSEC2: " + newSEC2.toString());
-						List<Pair<String,String>> addedPerm = new ArrayList<Pair<String,String>>(oneperm);
+						List<Pair<String,String>> addedPerm = new ArrayList<Pair<String,String>>(oneperm); //TODO I don't think it's necessary to make a new list here. Check with next update.
 						addedPerm.add(curassoc);
 
 						return fastSimCor(permutations, addedPerm, tempsimsum+largestval, nrows, next_simmatrix, newSEC1, newSEC2);
@@ -500,6 +499,37 @@ public class SemanticEventChains {
 			}
 		}
 		return similarityval;
+	}
+	
+	public List<Double> simpleSimCor(List<List<Pair<String, String>>> permutation_res, List<Double> similarityval_res, Double[][] spatial_sim_matrix, CompressedSEC CSEC1, CompressedSEC CSEC2)
+	{
+		List<Pair<String,String>> permutation = new ArrayList<Pair<String,String>>();
+		Double simsum = new Double(0);
+		//cycle through all the rows of our CompressedSEC and look for correspondences. It doesn't really matter which one we cycle through, because once we're through one, all the other rows that may be left in the other SEC will necessarily not have any correspondences.
+		List<String> csec1labels = CSEC1.getRelationStrings();
+		List<String> csec2labels = CSEC2.getRelationStrings();
+		for(int i=0; i<csec1labels.size(); i++)
+		{
+			for(int j=0; j<csec2labels.size(); j++)
+			{
+				String sec1name = CSEC1.getRelationNameStrings().get(i); //instead of numeric pairs, get a string with the name of the object in it
+				String sec2name = CSEC2.getRelationNameStrings().get(j);
+				if(sec1name.equals(sec2name)) //if the name of the relationship is the same
+				{
+					//add this correspondence to the permutation
+					Pair<String,String> curassoc = new Pair<String,String>(csec1labels.get(i), csec2labels.get(j));
+					permutation.add(curassoc);
+					
+					//add similarity to sum
+					Double simval = spatial_sim_matrix[i][j];
+					simsum += simval;
+				}
+			}
+		}
+		permutation_res.add(permutation); //Note that necessarily the permutations list will only contain one item. Kept it a list though to be compatible with the other functions using permutations, regardless of with SimCor was used
+		Double similarityval = simsum/spatial_sim_matrix.length;
+		similarityval_res.add(similarityval);
+		return similarityval_res;
 	}
 	
 	/**
@@ -549,9 +579,9 @@ public class SemanticEventChains {
 	{
 		Double[][] similarity_matrix = new Double[SEC1.SECmatrix.size()][SEC2.SECmatrix.size()];
 		System.out.println("Comparing: ");
-		SEC1.printSEC(SEC1.getRelationStrings(), null);
+		SEC1.printSEC();
 		System.out.println("To: ");
-		SEC2.printSEC(SEC2.getRelationStrings(), null);
+		SEC2.printSEC();
 
 		//Every row of SEC1 is compared to every row of SEC2 to find the highest similarity.
 		int irow =0; //to keep track of where to store the similarity value in the matrix. 
@@ -576,7 +606,7 @@ public class SemanticEventChains {
 		}
 		return similarity_matrix;
 	}
-
+	
 	/**
 	 * Wrap for spatialSimilarityMatrix and greedySimCor function. Initializes variables and prints out results.
 	 * In addition it will check whether the final similarity value for the different permutations are also the same and get rid of the permutations
@@ -588,13 +618,19 @@ public class SemanticEventChains {
 	 * will compute the similarity for both possibilities. If there is more than one permutation with equal final similarity value, will return
 	 * multiple permutation assignment lists.
 	 * 
+	 * NOTE: rows that do not have any corresponding rows are not inside permutation_res. In the temporalSimilarityValue function, when reordering the rows, all the non-corresponding rows will be placed at the end.
+	 * 
+	 * NOTE: if exactMatch = true, will call simpleSimCor instead of greedySimCor; instead of looking at the chains for matching rows, we assume that the objects that should
+	 * be matched have the same object name and this name is known (like it is in our simple cases). There is only one permutation inside that returned list.
+	 * 
+	 * Takes an additional argument nodenames, which contains the mapping from numbers to names.
 	 * @param SEC2
 	 * @return 
 	 */
-	public PermResults spatialSimilarityValueWith(CompressedSEC SEC2)
+	public PermResults spatialSimilarityValueWith(CompressedSEC CSEC2, boolean exactMatch)
 	{
-		Double[][] spatial_sim_matrix = spatialSimilarityMatrix(this.getCSEC(), SEC2);
-		MyUtil.printMatrix(spatial_sim_matrix, this.cSEC.getRelationStrings(), SEC2.getRelationStrings(), "Spatial Similarity Matrix:");
+		Double[][] spatial_sim_matrix = spatialSimilarityMatrix(this.getCSEC(), CSEC2);
+		MyUtil.printMatrix(spatial_sim_matrix, this.cSEC.getRelationStrings(), CSEC2.getRelationStrings(), "Spatial Similarity Matrix:");
 		//nrows needs to be given as a constant because the recursive function will lose the rows in recursion. Changed to ndimension because if the input is not matched according to dimension, there might be more columns than rows and then we want to divide by that.
 		int nmax_dimension = Math.max(spatial_sim_matrix.length, spatial_sim_matrix[0].length);
 		//variables that need to be given to recurse on
@@ -603,9 +639,15 @@ public class SemanticEventChains {
 		//variables for storing results
 		List<List<Pair<String, String>>> permutations_res = new ArrayList<List<Pair<String,String>>>();
 		List<Double> similarityval_res = new ArrayList<Double>();
-		//hackTemporalSimilaritySimpleCorrespondence(permutations_res, similarityval_res, oneperm, 0.0, nrows,spatial_sim_matrix, SEC1labels, SEC2labels);
-		greedySimCor(permutations_res, similarityval_res, oneperm, 0.0, nmax_dimension, spatial_sim_matrix, this.cSEC.getRelationStrings(), SEC2.getRelationStrings());
+		if(exactMatch)
+		{
+			simpleSimCor(permutations_res, similarityval_res, spatial_sim_matrix, this.getCSEC(), CSEC2);
+		}
+		else
+		{
+			greedySimCor(permutations_res, similarityval_res, oneperm, 0.0, nmax_dimension, spatial_sim_matrix, this.cSEC.getRelationStrings(), CSEC2.getRelationStrings());
 
+		}
 		PermResults result = new PermResults(permutations_res, similarityval_res);
 		//it may be that some of the permutations eventually lead to a lower similarity value, so take these out
 		//determine maximum value of row
@@ -619,6 +661,7 @@ public class SemanticEventChains {
 				result.removeItem(i);
 			}
 		}
+		System.out.println(permutations_res.toString());
 		return result;
 	}
 
@@ -665,9 +708,9 @@ public class SemanticEventChains {
 	private Double[][] temporalSimilarityMatrix(DerivedSEC tSEC1, DerivedSEC tSEC2)
 	{
 		System.out.println("Comparing: ");
-		tSEC1.printSEC(tSEC1.getRelationStrings(), tSEC1.getTimeStrings());
+		tSEC1.printSEC();
 		System.out.println("To: ");
-		tSEC2.printSEC(tSEC2.getRelationStrings(), tSEC2.getTimeStrings());
+		tSEC2.printSEC();
 		
 		//compare all columns with all columns to construct similarity matrix. No shuffling needed.
 		Double[][] similarity_matrix = new Double[tSEC1.SECmatrix.get(0).size()][tSEC2.SECmatrix.get(0).size()];

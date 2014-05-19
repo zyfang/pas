@@ -4,6 +4,7 @@
 package actSimG_prologMongo;
 
 import java.util.List;
+import java.util.Map;
 
 import org.javatuples.Pair;
 
@@ -16,9 +17,9 @@ public class CompressedSEC extends SEC{
 
 	public List<List<String>> SECmatrix;
 	
-	public CompressedSEC(List<List<String>> _matrix, List<Pair<Integer, Integer>> _relations)
+	public CompressedSEC(List<List<String>> _matrix, List<Pair<Integer, Integer>> _relations, Map<Integer,String> _nodenamemap)
 	{
-		super(_relations);
+		super(_relations, _nodenamemap);
 		this.SECmatrix = _matrix;
 	}
 
@@ -28,13 +29,13 @@ public class CompressedSEC extends SEC{
 	 * @param SEC
 	 */
 	@Override
-	public void printSEC(List<String> rlabels, List<String> clabels) 
+	public void printSEC() 
 	{
 		System.out.println("Compressed SEC");
 		//print row labels + data
-		for(int irow = 0; irow < rlabels.size(); irow++)
+		for(int irow = 0; irow < this.getRelationStrings().size(); irow++)
 		{
-			System.out.print(rlabels.get(irow) + "\t");
+			System.out.print(this.getRelationStrings().get(irow) + "\t");
 			System.out.println(this.SECmatrix.get(irow).toString());
 		}
 	}

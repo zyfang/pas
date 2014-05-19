@@ -18,13 +18,11 @@ public class OriginalSEC extends SEC{
 
 	public List<Long> timelabels;
 	public List<List<Integer>> SECmatrix;
-	public Map<Integer,String> nodenamemap;
 	
 	public OriginalSEC(List<List<Integer>> _matrix, List<Pair<Integer, Integer>> _relations, List<Long> _times, Map<Integer,String> _nodenamemap)
 	{
-		super(_relations);
+		super(_relations, _nodenamemap);
 		this.timelabels = _times;
-		this.nodenamemap = _nodenamemap;
 		this.SECmatrix = _matrix;
 	}
 	
