@@ -16,7 +16,7 @@ import org.javatuples.Pair;
  */
 public abstract class SEC {
 
-	public final List<Pair<Integer, Integer>> relationlabels;
+	public List<Pair<Integer, Integer>> relationlabels;
 	public final Map<Integer,String> nodenamemap;
 	public Object SECmatrix;
 	

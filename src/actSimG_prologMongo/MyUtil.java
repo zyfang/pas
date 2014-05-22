@@ -12,6 +12,21 @@ import java.util.List;
  */
 public class MyUtil {
 	
+	/**
+	 * Finds the index of the given relation in the label list (this is how we can retrace which row and column a value belongs to)
+	 * @param index
+	 * @return
+	 */
+	public static <T> int labelIndex(T label, List<T> labelslist)
+	{
+		int result = labelslist.indexOf(label);
+		if(result < 0)
+		{
+			System.out.println("WARNING: label " + label.toString() + " was not found in the list.");
+		}
+		return result;
+	}
+	
 	public static Double[][] transposeMatrix(Double[][] matrix)
 	{
 		Double[][] newmatrix = new Double[matrix[0].length][matrix.length]; //column and row length are reversed compared to old matrix

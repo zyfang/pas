@@ -899,11 +899,55 @@ public class MongoPrologInterface {
 		//FILL SEC AND MAKE DERIVED AND COMPRESSED VERSIONS
 		newSEC.constructAllSEC(important_graphs);
 		newSEC.getOSEC().printNodeMap();
-		newSEC.getDSEC().printSEC(newSEC.getDSEC().getRelationStrings(), newSEC.getDSEC().getTimeStrings());
-		newSEC.getCSEC().printSEC(newSEC.getCSEC().getRelationStrings(), null);
+		newSEC.getDSEC().printSEC();
+		newSEC.getCSEC().printSEC();
 		return newSEC;
 	
 	}
+	
+	/**
+	 * Build a ModelSEC from the given episodes.
+	 * Next function will use the ModelSEC to classify a new episode
+	 * 
+	 * @param episodes
+	 * @throws IOException 
+	 * @throws JSONException 
+	 */
+	public static void buildSECModel(List<String> episodes) throws JSONException, IOException
+	{
+		//get SECs for all the episodes in the list
+		List<SemanticEventChains> semeventchains = new ArrayList<SemanticEventChains>();
+		for(String ep : episodes)
+		{
+			MongoPrologInterface mpi = new MongoPrologInterface(ep);
+			SemanticEventChains chain = mpi.processEpisodeToSEC();
+			semeventchains.add(chain);
+		}
+		//choose the SEC with the largest number of columns to start with
+		int base_chain = mostColumns(semeventchains);
+		//make ModelSEC
+		ModelSEC actionModel = new ModelSEC(semeventchains, base_chain);
+		
+		//compare all the other matrices with the SECmodel
+		for(int i=0; i<semeventchains.size(); i++)
+		{
+			if(i!=base_chain) //skip if we're at the starting matrix since don't need to compare that
+			{
+				SemanticEventChains ichain = semeventchains.get(i);
+				DerivedSEC modeldsec = actionModel.getdSECModel();
+				CompressedSEC modelcsec = actionModel.getcSECModel();
+				//compute similarity between the current sec and the model
+				boolean exactMatch = false;
+				PermResults permutations = semeventchains.get(i).spatialSimilarityValue(modelcsec, ichain.getCSEC(), exactMatch);
+				System.out.println("WARNING: right now take the first permutation for building model. Update this later. With exactMatch there should only be one permutation.");
+				//temporalSimilarityValue also reorders te second derived sec
+				SimTotalResults allresults = semeventchains.get(i).temporalSimilarityValueWith(modeldsec, ichain.getDSEC(), permutations);
+				//compare current matrix with the existing SECmodel
+				actionModel.updateModel(ichain);
+			}
+		}
+	}
+	
 	
 	/**
 	 * Compares two episodes with each other
@@ -930,16 +974,54 @@ public class MongoPrologInterface {
 		SemanticEventChains SEC2 = mpi2.processEpisodeToSEC();
 				
 		//SPATIAL SIMILARITY MATRIX
-		boolean exactMatch = true;
-		PermResults permutations = SEC1.spatialSimilarityValueWith(SEC2.getCSEC(), exactMatch);
+		boolean exactMatch = false;
+		PermResults permutations = SEC1.spatialSimilarityValue(SEC1.getCSEC(), SEC2.getCSEC(), exactMatch);
 		
 		//TEMPORAL SIMILARITY MATRIX
-		SimTotalResults allresults = SEC1.temporalSimilarityValueWith(SEC2.getDSEC(), permutations);
+		SEC2.getDSEC().printSEC();
+		SimTotalResults allresults = SEC1.temporalSimilarityValueWith(SEC1.getDSEC(), SEC2.getDSEC(), permutations);
+		SEC2.getDSEC().printSEC();
 		List<Double> simvals = new ArrayList<Double>();
 		simvals.add(allresults.max_spat_sim);
 		simvals.add(allresults.max_temp_sim);
 		
 		return simvals;
+	}
+	
+	/**
+	 * Make comparisons between all episodes in EPISODES and prints out a similarity table at the end
+	 * 
+	 * @throws JSONException
+	 * @throws IOException
+	 */
+	public static void makeFullComparisonTable() throws JSONException, IOException
+	{
+		//Compare all episodes that have been defined in EPISODES with each other
+		List<Pair<String,String>> uniqueComparisons = allUniquePairs(EPISODES);
+		//make matrix for similarities between episodes
+		Double[][] totalsim_spat = new Double[EPISODES.size()][EPISODES.size()];
+		Double[][] totalsim_temp = new Double[EPISODES.size()][EPISODES.size()];
+		
+		int row = 0; //to keep track of at which row you are
+		int column = 1;
+		for(int i = 0; i<uniqueComparisons.size(); i++)
+		{
+			Pair<String,String> comp = uniqueComparisons.get(i);
+			List<Double> simvals = compareEpisodes(comp.getValue0(), comp.getValue1()); //1=spatial, 2=temporal
+			totalsim_spat[row][column] = simvals.get(0);
+			totalsim_temp[row][column] = simvals.get(1);
+			if(EPISODES.size()==column+1) //have to start filling the next row
+			{
+				row++;
+				column = row+1;
+			}
+			else
+			{
+				column++;
+			}
+		}
+		MyUtil.printMatrix(totalsim_spat, EPISODES, EPISODES, "Spatial similarities:");
+		MyUtil.printMatrix(totalsim_temp, EPISODES, EPISODES, "Temporal similarities:");
 	}
 
 	/**
@@ -949,40 +1031,9 @@ public class MongoPrologInterface {
 	public static void main(String[] args) 
 	{				
 		try {
-			File outputfile = new File("/home/yfang/javamongotestout2.txt");
-			if(!outputfile.exists())
-			{
-				outputfile.createNewFile();
-			}
-			//Compare all episodes that have been defined in EPISODES with each other
-			List<Pair<String,String>> uniqueComparisons = allUniquePairs(EPISODES);
-			//make matrix for similarities between episodes
-			Double[][] totalsim_spat = new Double[EPISODES.size()][EPISODES.size()];
-			Double[][] totalsim_temp = new Double[EPISODES.size()][EPISODES.size()];
 			
 			List<Double> simvals = compareEpisodes("acat_move2", "acat_move3"); //1=spatial, 2=temporal
-			
-//			int row = 0; //to keep track of at which row you are
-//			int column = 1;
-//			for(int i = 0; i<uniqueComparisons.size(); i++)
-//			{
-//				Pair<String,String> comp = uniqueComparisons.get(i);
-//				List<Double> simvals = compareEpisodes(comp.getValue0(), comp.getValue1()); //1=spatial, 2=temporal
-//				totalsim_spat[row][column] = simvals.get(0);
-//				totalsim_temp[row][column] = simvals.get(1);
-//				if(EPISODES.size()==column+1) //have to start filling the next row
-//				{
-//					row++;
-//					column = row+1;
-//				}
-//				else
-//				{
-//					column++;
-//				}
-//			}
-//			
-//			MyUtil.printMatrix(totalsim_spat, EPISODES, EPISODES, "Spatial similarities:");
-//			MyUtil.printMatrix(totalsim_temp, EPISODES, EPISODES, "Temporal similarities:");
+//			makeFullComparisonTable();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -1031,6 +1082,29 @@ public class MongoPrologInterface {
 		rotmatrix[3][3] = Math.cos(b) * Math.cos(c);
 		Matrix result = new Matrix(rotmatrix);
 		return result;
+	}
+	
+	/**
+	 * Returns the index of the semantic chain whose derived matrix has the most columns of the SEC in the list
+	 * 
+	 * @param _matrices
+	 * @return
+	 */
+	private static int mostColumns(List<SemanticEventChains> secs)
+	{
+		int largest = 0;
+		int largest_index = 0;
+		//all the DSECs have the same number of columns in each row, I can just take the column labels (time) to see how many columns it has
+		for(int i=0; i<secs.size(); i++)
+		{
+			int ncolumns = secs.get(i).getDSEC().getTimeStrings().size();
+			if(ncolumns > largest)
+			{
+				largest = ncolumns;
+				largest_index = i;
+			}
+		}
+		return largest_index;
 	}
 
 }
