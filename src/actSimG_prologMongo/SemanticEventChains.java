@@ -87,6 +87,7 @@ public class SemanticEventChains {
 		}
 		//Store graph and obtained SEC
 		OriginalSEC original = new OriginalSEC(matrix, relation_labels, times, nodenamemap);
+		System.out.println(times);
 		this.oSEC = original;
 		this.original_main_graphs = main_graphs; //store for later
 	}
@@ -142,7 +143,7 @@ public class SemanticEventChains {
 				//convert to numbers
 				Integer fromNumber = Integer.parseInt(nameProvider.getVertexName(from));
 				Integer toNumber = Integer.parseInt(nameProvider.getVertexName(to));
-
+				
 				//because Pairs are ordered, need to have the right order for the key to work. The way the map is initialized, the smaller number always comes first
 				Pair<Integer, Integer> cur_row_index;
 				if(fromNumber>toNumber)
@@ -155,6 +156,16 @@ public class SemanticEventChains {
 				}
 				Integer rel_value = new Integer((int)igraph.getEdgeWeight(igraph.getEdge(from, to))); //TODO part of encoding more relations
 				int currentindex = MyUtil.labelIndex(cur_row_index, this.oSEC.relationlabels);
+				
+//				if(i==3 || i==4)
+//				{
+//					System.out.println("i: " + i);
+//					System.out.println(igraph.toString());
+//					System.out.println("from: " + from + " - " + fromNumber);
+//					System.out.println("to: " + to + " - " + toNumber);
+//					System.out.println("Value: " + rel_value);
+//				}
+				
 				this.oSEC.SECmatrix.get(currentindex).set(i, rel_value);
 			}
 		}

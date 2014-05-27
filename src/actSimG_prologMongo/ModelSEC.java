@@ -85,7 +85,7 @@ public class ModelSEC{
 			int res_ind = max_row_similarity_index(modeldsec.SECmatrix.get(i), cur_dsec_ordered.SECmatrix.get(i));
 			rowmatch_indexes.add(new Integer(res_ind));
 		}
-		//if the curdsec has less columns than modeldsec, look how big the difference is and try up to that difference whether a certain row should be matched now or later. If the sizes are equal, will only go through the loop once (and start matching all at 0)
+		//if the curdsec has less columns than modeldsec, look how big the difference is and try up to that difference at which position the similarity (both row and columns) would be maximal; BASICALLY, we're looking for a match that would increase the most weights
 		for(int i=0; i<(modeldsec.getTimeStrings().size()-cur_dsec_ordered.getTimeStrings().size()+1); i++)
 		{
 			//go from 0 to the length of the model matrix (#columns). If the current rowmatchindex==i, we know where to start counting to add weights, if the rowmatchindex !=i, know that can safely add one dummy to the front

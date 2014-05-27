@@ -127,6 +127,9 @@ public class MongoPrologInterface {
 		NAMEMAP.put("thumb_proximal_collision", "hand");
 		NAMEMAP.put("thumb_middle_collision", "hand");
 		NAMEMAP.put("thumb_distal_collision", "hand");
+		
+		NAMEMAP.put("palm_collision", "hand");
+		NAMEMAP.put("mug_cap_collision", "mug_collision");
 
 		//		//OLD WAY
 		//		nameMap.put("right_hand_fore_finger_base_link_collision", "right_hand");
@@ -175,7 +178,6 @@ public class MongoPrologInterface {
 		RELATIONWEIGHTS.put("supportedby", 2.0);
 		RELATIONWEIGHTS.put("insideof", 3.0);
 	}
-	
 	
 	/**
 	 * MongoPrologInterface constructor
@@ -610,7 +612,7 @@ public class MongoPrologInterface {
 //		{
 			edgeweight = RELATIONWEIGHTS.get("contact").doubleValue();
 //		}
-
+			
 		//add edge to graph if it doesn't exist yet
 		if(!graph.containsVertex(new1) || !graph.containsVertex(new2))
 		{
@@ -772,21 +774,25 @@ public class MongoPrologInterface {
 	public List<SimpleWeightedGraph<String,DefaultWeightedEdge>> extractMainGraphs(List<SimpleWeightedGraph<String,DefaultWeightedEdge>> allgraphs, List<Long> graphtimes, List<Long> importanttimes)
 	{
 		List<SimpleWeightedGraph<String,DefaultWeightedEdge>> mainGraphs = new ArrayList<SimpleWeightedGraph<String,DefaultWeightedEdge>>();
-
+		System.out.println(graphtimes);
 		SimpleWeightedGraph<String,DefaultWeightedEdge> prev_graph = null;
 		//convert graph to adjacency matrix, them compute eigenvalues and check with previous eigenvalues whether graphstructure has changed
 		//if it changed, store graph. If it didn't, go to next one.
-		int i = 0;
 		double[] prev_eig =null;
-		for(SimpleWeightedGraph<String,DefaultWeightedEdge> igraph : allgraphs)
+		long prev_eigtime = 0;
+		double[] next_eig =null;
+		for(int i=0; i<allgraphs.size(); i++)
 		{
-			if (prev_graph == null) //always add the first graph
+			SimpleWeightedGraph<String,DefaultWeightedEdge> igraph = allgraphs.get(i);
+//			System.out.println("Graph at time " + importanttimes + ": " + mainGraphs.toString());
+			if (prev_graph == null) //the first graph
 			{
 				//TODO: this needs to be uncommented again (?) --> don't store the very first graph because nothing is touching anything in it and it's only the very first timestamp. The way things are inititialized a lot of stuff will show up that's not actually important to the action.
-				//				mainGraphs.add(igraph);
-				//				importanttimes.add(graphtimes.get(i));
-				prev_graph = igraph;
+//				mainGraphs.add(igraph);
+//				importanttimes.add(graphtimes.get(i));
+				prev_graph = (SimpleWeightedGraph<String, DefaultWeightedEdge>) igraph.clone();
 				prev_eig = graphToEigenvalue(prev_graph); //TODO add other relations + check whether eigenvalues change if the values change (e.g. whether it detects all changes)
+				prev_eigtime = graphtimes.get(i);
 				//				System.out.println("Storing " + i);
 			}
 			else
@@ -796,16 +802,53 @@ public class MongoPrologInterface {
 					System.err.println("ERROR: prev_eigen is null when prev_graph is not.");
 				}
 				double[] cur_eig = graphToEigenvalue(igraph);
-				if(!Arrays.equals(prev_eig, cur_eig))
+				
+				if(!Arrays.equals(prev_eig, cur_eig))//if the eigenvalues are not the same, it means something in the structure of the graph changed
 				{
-					mainGraphs.add(igraph);
-					importanttimes.add(graphtimes.get(i));
-					//					System.out.println("Storing " + i);
+					//add current graph if there is no next graph
+					if(i == allgraphs.size()-1)
+					{
+						mainGraphs.add(igraph);
+						importanttimes.add(graphtimes.get(i));
+						
+						//											System.out.println("Storing " + i);
+						prev_graph = (SimpleWeightedGraph<String, DefaultWeightedEdge>) igraph.clone();
+						prev_eig = cur_eig;
+						prev_eigtime = graphtimes.get(i);
+					}
+					else //check whether within the next 100 timesteps, the state will revert back to the prev_eig at least once, if that's the case, DON'T add the graph. Otherwise can add it..
+					{
+						int counter =1;
+						boolean addgraph = true;
+						while(graphtimes.get(i+counter) - graphtimes.get(i) < 120)//keep checking for similarities until at least 100 steps have passes
+						{
+							next_eig = graphToEigenvalue(allgraphs.get(i+counter));
+							if(Arrays.equals(next_eig, prev_eig))
+							{
+								addgraph = false;
+							}							
+							counter++;
+						}
+						if(addgraph)
+						{
+							System.out.println("\nStoring graph at time " + graphtimes.get(i));
+							System.out.println("Previous Eig at time: " + prev_eigtime);
+							MyUtil.printArray(prev_eig);
+							System.out.println("Next Eig at time : " + graphtimes.get(i+1) );
+							MyUtil.printArray(next_eig);
+							System.out.println("Current Eig: " );
+							MyUtil.printArray(cur_eig);
+							
+							mainGraphs.add(igraph);
+							importanttimes.add(graphtimes.get(i));
+							prev_graph = (SimpleWeightedGraph<String, DefaultWeightedEdge>) igraph.clone();
+							prev_eig = cur_eig;
+							prev_eigtime = graphtimes.get(i);
+						}
+					}
+					
 				}
-				prev_graph = igraph;
-				prev_eig = cur_eig;
 			}
-			i++;
 		}		
 		return mainGraphs;
 	}
@@ -891,18 +934,29 @@ public class MongoPrologInterface {
 		//OBTAINING EVENT AND MAIN GRAPHS1
 		List<Long> graphtimes = new ArrayList<Long>(); //for storing at which times graphs occurred
 		List<SimpleWeightedGraph<String,DefaultWeightedEdge>> all_graphs = this.contactEventsGraphs(graphtimes);
+		
 		List<Long> importanttimes = new ArrayList<Long>(); //for storing at which times important graphs occurred. This is nice to keep track of for printing later, So I actually know what timepoints the columns in the SECs correspond to
 		List<SimpleWeightedGraph<String,DefaultWeightedEdge>> important_graphs = this.extractMainGraphs(all_graphs, graphtimes, importanttimes);
-
+		for(int i=0; i<important_graphs.size();i++)
+		{
+			System.out.println(importanttimes.get(i) + ": " + important_graphs.get(i).toString());
+		}
+		
+		
+//		System.out.println("Maingraph 3: " + important_graphs.get(3).toString());
+//		System.out.println("Time: " + importanttimes.get(3));
+//		System.out.println("Maingraph 4: " + important_graphs.get(4).toString());
+//		System.out.println("Time: " + importanttimes.get(4));
+		
 		//SEC PROCESSING, initialize SEC
 		SemanticEventChains newSEC = new SemanticEventChains(important_graphs, importanttimes);
 		//FILL SEC AND MAKE DERIVED AND COMPRESSED VERSIONS
 		newSEC.constructAllSEC(important_graphs);
 		newSEC.getOSEC().printNodeMap();
+		newSEC.getOSEC().printSEC();
 		newSEC.getDSEC().printSEC();
 		newSEC.getCSEC().printSEC();
 		return newSEC;
-	
 	}
 	
 	/**
@@ -1031,8 +1085,10 @@ public class MongoPrologInterface {
 	public static void main(String[] args) 
 	{				
 		try {
+			MongoPrologInterface mpi1 = new MongoPrologInterface("dr_mug1");
+			SemanticEventChains SEC1 = mpi1.processEpisodeToSEC();
 			
-			List<Double> simvals = compareEpisodes("acat_move2", "acat_move3"); //1=spatial, 2=temporal
+			//List<Double> simvals = compareEpisodes("dr_mug1", "mv_mug1"); //1=spatial, 2=temporal
 //			makeFullComparisonTable();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
