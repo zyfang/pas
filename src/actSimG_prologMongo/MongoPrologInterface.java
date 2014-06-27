@@ -5,19 +5,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -36,13 +24,11 @@ import com.mongodb.MongoClient;
 import com.mongodb.util.JSON;
 import com.mxgraph.swing.util.mxGraphActions.RemoveFromParentAction;
 
-import org.javatuples.Pair;
+import org.javatuples.*;
 import org.jgrapht.ext.*;
 import org.jgrapht.*;
 import org.jgrapht.graph.*;
-import org.jgrapht.util.*;
 
-import sun.security.util.DerEncoder;
 
 /**
  * 
@@ -110,25 +96,25 @@ public class MongoPrologInterface {
 		//		nameMap.put("thumb_distal_collision", "thumb");
 
 		//fingers collapsed into hand only
-		NAMEMAP.put("fore_finger_base_collision", "hand");
-		NAMEMAP.put("fore_finger_proximal_collision", "hand");
-		NAMEMAP.put("fore_finger_middle_collision", "hand");
-		NAMEMAP.put("fore_finger_distal_collision", "hand");
-		NAMEMAP.put("middle_finger_base_collision", "hand");
-		NAMEMAP.put("middle_finger_proximal_collision", "hand");
-		NAMEMAP.put("middle_finger_middle_collision", "hand");
-		NAMEMAP.put("middle_finger_distal_collision", "hand");
-		NAMEMAP.put("ring_finger_base_collision", "hand");
-		NAMEMAP.put("ring_finger_proximal_collision", "hand");
-		NAMEMAP.put("ring_finger_middle_collision", "hand");
-		NAMEMAP.put("ring_finger_distal_collision", "hand");
-		NAMEMAP.put("thumb_base_collision", "hand");
-		NAMEMAP.put("thumb_base_collision", "hand");
-		NAMEMAP.put("thumb_proximal_collision", "hand");
-		NAMEMAP.put("thumb_middle_collision", "hand");
-		NAMEMAP.put("thumb_distal_collision", "hand");
+		NAMEMAP.put("fore_finger_base_collision", "hit_hand");
+		NAMEMAP.put("fore_finger_proximal_collision", "hit_hand");
+		NAMEMAP.put("fore_finger_middle_collision", "hit_hand");
+		NAMEMAP.put("fore_finger_distal_collision", "hit_hand");
+		NAMEMAP.put("middle_finger_base_collision", "hit_hand");
+		NAMEMAP.put("middle_finger_proximal_collision", "hit_hand");
+		NAMEMAP.put("middle_finger_middle_collision", "hit_hand");
+		NAMEMAP.put("middle_finger_distal_collision", "hit_hand");
+		NAMEMAP.put("ring_finger_base_collision", "hit_hand");
+		NAMEMAP.put("ring_finger_proximal_collision", "hit_hand");
+		NAMEMAP.put("ring_finger_middle_collision", "hit_hand");
+		NAMEMAP.put("ring_finger_distal_collision", "hit_hand");
+		NAMEMAP.put("thumb_base_collision", "hit_hand");
+		NAMEMAP.put("thumb_base_collision", "hit_hand");
+		NAMEMAP.put("thumb_proximal_collision", "hit_hand");
+		NAMEMAP.put("thumb_middle_collision", "hit_hand");
+		NAMEMAP.put("thumb_distal_collision", "hit_hand");
 		
-		NAMEMAP.put("palm_collision", "hand");
+		NAMEMAP.put("palm_collision", "hit_hand");
 		NAMEMAP.put("mug_cap_collision", "mug_collision");
 
 		//		//OLD WAY
@@ -322,6 +308,26 @@ public class MongoPrologInterface {
 		this.world = local_world;
 	}
 
+	
+	/**
+	 * 
+	 */
+	public String[] getModelNames()
+	{	
+		//prolog shell output
+		System.out.println("getModelNames called.");
+
+		// check if world is initialized, if not, get the world at the initial timestamp (this will populate the world with models, links, collisions and contacts)
+		if (this.world == null)
+		{
+			this.setWorldState(A_TIMESTAMP);
+		}
+		// get the models map
+		HashMap<String, Model> models = (HashMap<String, Model>) this.world.getModels();
+		// a string array with all the model names
+		String[] model_names = models.keySet().toArray(new String[models.size()]);
+		return model_names;
+	}
 	/**
 	 * 
 	 * 
@@ -401,7 +407,7 @@ public class MongoPrologInterface {
 		double[] bounding_box = new double[6];
 
 		// query for getting the document at the given closest greater or equal than the timestamp
-		BasicDBObject query = new BasicDBObject("timestamp", new BasicDBObject("$gte", timestamp));	
+		BasicDBObject query = new BasicDBObject("timestamp", timestamp*1000000);	
 
 		// fields for projecting only the pose of the given model name
 		BasicDBObject fields = new BasicDBObject("_id", 0);
@@ -416,7 +422,7 @@ public class MongoPrologInterface {
 		if(first_doc == null)
 		{
 			// echo for prolog
-			//			System.out.println("IJavaDB: timestamp out of bounds");
+			System.out.println("IJavaDB: timestamp out of bounds");
 			return null;
 		}
 
@@ -469,6 +475,7 @@ public class MongoPrologInterface {
 	 */
 	public boolean insideOfModelBoundingbox(String modelname1, String modelname2, long timestamp)
 	{
+//		System.out.println("Search for " + modelname1 + " at " + timestamp);
 		double[] bbox1 = getModelBoundingBox(modelname1, timestamp); //first 3 coordinates are the box_min and other 3 are the box_max
 		Pose pose1 = getModelPose2(modelname1, timestamp); //need to get pose of model1 for the rotation parameters
 		Pose pose2 = getModelPose2(modelname2, timestamp); //get pose of model2 so can do same transform as with bbox1
@@ -477,24 +484,24 @@ public class MongoPrologInterface {
 		double[] pose2_pos = {pose2.pos.x(), pose2.pos.y(), pose2.pos.z()};
 		Matrix bbox1_mat = new Matrix(box1_resize);
 		Matrix pose2_mat = new Matrix(pose2_pos, 1);
-		bbox1_mat.print(10, 4);
-		pose2_mat.print(10, 4);
+//		bbox1_mat.print(10, 4);
+//		pose2_mat.print(10, 4);
 		
 		Matrix rotation_mat = rotationMatrix(pose1.rot.x(), pose1.rot.y(), pose1.rot.z()); //get rotation matrix for the container object
 		rotation_mat.transpose(); //this gives you the inverse of the rotationMatrix, which needs to be applied to the current object to get it back to align with the world axes
 		//rotate container object so that it's aligned with the world axis. Rotate the content object the same (if I would rotate it according to it's own axis, it might not be correct whether it's still in the container or not..?).
 		Matrix aligned_bbox1_mat = bbox1_mat.times(rotation_mat);
 		Matrix aligned_pose2_mat = pose2_mat.times(rotation_mat);
-		aligned_bbox1_mat.print(10, 4);
-		aligned_pose2_mat.print(10, 4);
+//		aligned_bbox1_mat.print(10, 4);
+//		aligned_pose2_mat.print(10, 4);
 		
 		//check whether point is within box by checking for each axis whether minbox <= point <= maxbox
-		System.out.println(aligned_bbox1_mat.get(0, 0) <= aligned_pose2_mat.get(0, 0));
-		System.out.println(aligned_pose2_mat.get(0, 0) <= aligned_bbox1_mat.get(1, 0));
-		System.out.println(aligned_bbox1_mat.get(0, 1) <= aligned_pose2_mat.get(0, 1)); 
-		System.out.println(aligned_pose2_mat.get(0, 1) <= aligned_bbox1_mat.get(1, 1)); 
-		System.out.println(aligned_bbox1_mat.get(0, 2) <= aligned_pose2_mat.get(0, 2)); 
-		System.out.println(aligned_pose2_mat.get(0, 2) <= aligned_bbox1_mat.get(1, 2));
+//		System.out.println(aligned_bbox1_mat.get(0, 0) <= aligned_pose2_mat.get(0, 0));
+//		System.out.println(aligned_pose2_mat.get(0, 0) <= aligned_bbox1_mat.get(1, 0));
+//		System.out.println(aligned_bbox1_mat.get(0, 1) <= aligned_pose2_mat.get(0, 1)); 
+//		System.out.println(aligned_pose2_mat.get(0, 1) <= aligned_bbox1_mat.get(1, 1)); 
+//		System.out.println(aligned_bbox1_mat.get(0, 2) <= aligned_pose2_mat.get(0, 2)); 
+//		System.out.println(aligned_pose2_mat.get(0, 2) <= aligned_bbox1_mat.get(1, 2));
 		// box_minx <= obj_x && obj_x <= box_maxx && box_miny <= obj_y && obj_y <= box_maxy && box_minz <= obj_z && obj_z <= box_maxz  
 		return (aligned_bbox1_mat.get(0, 0) <= aligned_pose2_mat.get(0,0) && aligned_pose2_mat.get(0, 0) <= aligned_bbox1_mat.get(1, 0) && aligned_bbox1_mat.get(0,1) <= aligned_pose2_mat.get(0,1) && aligned_pose2_mat.get(0, 1) <= aligned_bbox1_mat.get(1, 1) && aligned_bbox1_mat.get(0, 2) <= aligned_pose2_mat.get(0, 2) && aligned_pose2_mat.get(0, 2) <= aligned_bbox1_mat.get(1, 2));
 	}
@@ -512,12 +519,17 @@ public class MongoPrologInterface {
 	{
 		//get bounding box model 1
 		double[] bbox1 = getModelBoundingBox(modelname1, timestamp);
-		//get location of the centerpoint model 2
-		Pose pose2 = getModelPose2(modelname2, timestamp);
-//		System.out.println(modelname1 + " has max bounding box z " + bbox1[5]);
-//		System.out.println(modelname2 + " has z pose " + pose2.pos.z());
-		
-		return bbox1[5] <= pose2.pos.z();
+		double[] bbox2 = getModelBoundingBox(modelname2, timestamp);
+//		//get location of the centerpoint model 2
+//		Pose pose2 = getModelPose2(modelname2, timestamp);
+		if((timestamp == 7915 && modelname1.equals("hit_hand")) || (timestamp == 7915 && modelname2.equals("hit_hand")))
+		{
+			System.out.println(modelname1 + " has max bounding box z " + bbox1[5]);
+			System.out.println(modelname1 + " has min bounding box z " + bbox1[2]);
+			System.out.println(modelname2 + " has min bounding box z " + bbox2[2]);
+			System.out.println(modelname2 + " has max bounding box z " + bbox2[5]);
+		}
+		return bbox1[5] <= bbox2[2];
 	}
 	
 	/**
@@ -599,20 +611,18 @@ public class MongoPrologInterface {
 		
 //		Random rand=new Random(); //temporarily random
 //		edgeweight = (double)rand.nextInt(3); //randomly the weight will be 0 or 1 or 2 //TODO replace random assignment with actual function
-//		if(edgeweight ==2)//if(insideOfModelBoundingbox(node1modelname, node2modelname, time)) //Andrei said that the boundingbox for the spheres model is totally off (way too big), so they won't be recognized as within the mug. I'm taking the center now and hope that works. Otherwise I'll have to check whether the link is inside the model1 boundingbox rather than the whole model2. TODO: think about whether want to check this on link level or on model level. How can I make this as general as possible?
+//		if(insideOfModelBoundingbox(node1modelname, node2modelname, time)) //Andrei said that the boundingbox for the spheres model is totally off (way too big), so they won't be recognized as within the mug. I'm taking the center now and hope that works. Otherwise I'll have to check whether the link is inside the model1 boundingbox rather than the whole model2. TODO: think about whether want to check this on link level or on model level. How can I make this as general as possible?
 //		{
 //			edgeweight = RELATIONWEIGHTS.get("insideof").doubleValue();
 //		}
-//		if(edgeweight ==1)//if(supportedBy(node1modelname, node2modelname, time) || supportedBy(node2modelname, node1modelname, time)) //TODO need to throw around graph representation sos it will be a directed graph. Right now even the supported by and inside relations can't distinguish who is supported and who is doing the supporting.
+//		if(supportedBy(node1modelname, node2modelname, time) || supportedBy(node2modelname, node1modelname, time)) //TODO need to throw around graph representation sos it will be a directed graph. Right now even the supported by and inside relations can't distinguish who is supported and who is doing the supporting.
 //		{
-//			
 //			edgeweight = RELATIONWEIGHTS.get("supportedby").doubleValue();
 //		}
-//		else if(edgeweight ==0)
+//		else
 //		{
 			edgeweight = RELATIONWEIGHTS.get("contact").doubleValue();
 //		}
-			
 		//add edge to graph if it doesn't exist yet
 		if(!graph.containsVertex(new1) || !graph.containsVertex(new2))
 		{
@@ -714,6 +724,7 @@ public class MongoPrologInterface {
 		BasicDBObject query = new BasicDBObject();
 		BasicDBObject fields = new BasicDBObject("models.links.collisions.contacts.name", 1);
 		fields.append("models.name", 1);
+		fields.append("models.bbox", 1);
 		fields.append("_id", 0);
 		fields.append("timestamp", 1);
 		fields.append("models.links.name", 1);
@@ -738,6 +749,10 @@ public class MongoPrologInterface {
 						new SimpleWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge.class); //each timestamp will be represented by an undirected graph
 				Map<String, String> parents = new HashMap<String, String>(); //keeps a list whose child the current collision is
 				constructGraph(i_graph, levelnames, cur_allmods, parents, currenttime);
+				if(currenttime == 7915)
+				{
+					System.out.println(i_graph.toString());
+				}
 //				System.out.println("Graph " + currenttime + ": " + i_graph.toString());
 				//System.out.println(i_graph.toString());
 				//store graph
@@ -774,7 +789,7 @@ public class MongoPrologInterface {
 	public List<SimpleWeightedGraph<String,DefaultWeightedEdge>> extractMainGraphs(List<SimpleWeightedGraph<String,DefaultWeightedEdge>> allgraphs, List<Long> graphtimes, List<Long> importanttimes)
 	{
 		List<SimpleWeightedGraph<String,DefaultWeightedEdge>> mainGraphs = new ArrayList<SimpleWeightedGraph<String,DefaultWeightedEdge>>();
-		System.out.println(graphtimes);
+//		System.out.println(graphtimes);
 		SimpleWeightedGraph<String,DefaultWeightedEdge> prev_graph = null;
 		//convert graph to adjacency matrix, them compute eigenvalues and check with previous eigenvalues whether graphstructure has changed
 		//if it changed, store graph. If it didn't, go to next one.
@@ -820,7 +835,10 @@ public class MongoPrologInterface {
 					{
 						int counter =1;
 						boolean addgraph = true;
-						while(graphtimes.get(i+counter) - graphtimes.get(i) < 120)//keep checking for similarities until at least 100 steps have passes
+//						System.out.println("graphtimes size: " + graphtimes.size());
+//						System.out.println("graphssize: " + allgraphs.size());
+						
+						while(graphtimes.get(i+counter) - graphtimes.get(i) < 20)//keep checking for similarities until at least 100 steps have passes
 						{
 							next_eig = graphToEigenvalue(allgraphs.get(i+counter));
 							if(Arrays.equals(next_eig, prev_eig))
@@ -828,16 +846,20 @@ public class MongoPrologInterface {
 								addgraph = false;
 							}							
 							counter++;
+							if(counter+i == allgraphs.size()) //don't try to count forward beyond the size
+							{
+								break;
+							}
 						}
 						if(addgraph)
 						{
-							System.out.println("\nStoring graph at time " + graphtimes.get(i));
-							System.out.println("Previous Eig at time: " + prev_eigtime);
-							MyUtil.printArray(prev_eig);
-							System.out.println("Next Eig at time : " + graphtimes.get(i+1) );
-							MyUtil.printArray(next_eig);
-							System.out.println("Current Eig: " );
-							MyUtil.printArray(cur_eig);
+//							System.out.println("\nStoring graph at time " + graphtimes.get(i));
+//							System.out.println("Previous Eig at time: " + prev_eigtime);
+//							MyUtil.printArray(prev_eig);
+//							System.out.println("Next Eig at time : " + graphtimes.get(i+1) );
+//							MyUtil.printArray(next_eig);
+//							System.out.println("Current Eig: " );
+//							MyUtil.printArray(cur_eig);
 							
 							mainGraphs.add(igraph);
 							importanttimes.add(graphtimes.get(i));
@@ -937,16 +959,6 @@ public class MongoPrologInterface {
 		
 		List<Long> importanttimes = new ArrayList<Long>(); //for storing at which times important graphs occurred. This is nice to keep track of for printing later, So I actually know what timepoints the columns in the SECs correspond to
 		List<SimpleWeightedGraph<String,DefaultWeightedEdge>> important_graphs = this.extractMainGraphs(all_graphs, graphtimes, importanttimes);
-		for(int i=0; i<important_graphs.size();i++)
-		{
-			System.out.println(importanttimes.get(i) + ": " + important_graphs.get(i).toString());
-		}
-		
-		
-//		System.out.println("Maingraph 3: " + important_graphs.get(3).toString());
-//		System.out.println("Time: " + importanttimes.get(3));
-//		System.out.println("Maingraph 4: " + important_graphs.get(4).toString());
-//		System.out.println("Time: " + importanttimes.get(4));
 		
 		//SEC PROCESSING, initialize SEC
 		SemanticEventChains newSEC = new SemanticEventChains(important_graphs, importanttimes);
@@ -1127,15 +1139,15 @@ public class MongoPrologInterface {
 	public static Matrix rotationMatrix(double a, double b, double c)
 	{
 		double[][] rotmatrix =  new double[3][3];
-		rotmatrix[1][1] = Math.cos(a) * Math.cos(b);
-		rotmatrix[1][2] = Math.cos(a) * Math.sin(b) * Math.sin(c) - Math.sin(a) * Math.cos(c);
-		rotmatrix[1][3] = Math.cos(a) * Math.sin(b) * Math.cos(c) + Math.sin(a) * Math.sin(c);
-		rotmatrix[2][1] = Math.sin(a) * Math.cos(b);
-		rotmatrix[2][2] = Math.sin(a) * Math.sin(b) * Math.sin(c) + Math.cos(a) * Math.cos(c);
-		rotmatrix[2][3] = Math.sin(a) * Math.sin(b) * Math.cos(c) - Math.cos(a) * Math.sin(c);
-		rotmatrix[3][1] = -Math.sin(b);
-		rotmatrix[3][2] = Math.cos(b) * Math.sin(c);
-		rotmatrix[3][3] = Math.cos(b) * Math.cos(c);
+		rotmatrix[0][0] = Math.cos(a) * Math.cos(b);
+		rotmatrix[0][1] = Math.cos(a) * Math.sin(b) * Math.sin(c) - Math.sin(a) * Math.cos(c);
+		rotmatrix[0][2] = Math.cos(a) * Math.sin(b) * Math.cos(c) + Math.sin(a) * Math.sin(c);
+		rotmatrix[1][0] = Math.sin(a) * Math.cos(b);
+		rotmatrix[1][1] = Math.sin(a) * Math.sin(b) * Math.sin(c) + Math.cos(a) * Math.cos(c);
+		rotmatrix[1][2] = Math.sin(a) * Math.sin(b) * Math.cos(c) - Math.cos(a) * Math.sin(c);
+		rotmatrix[2][0] = -Math.sin(b);
+		rotmatrix[2][1] = Math.cos(b) * Math.sin(c);
+		rotmatrix[2][2] = Math.cos(b) * Math.cos(c);
 		Matrix result = new Matrix(rotmatrix);
 		return result;
 	}

@@ -79,7 +79,7 @@ public class ModelSEC{
 		List<Integer> rowmatch_indexes = new ArrayList<Integer>();
 		
 		//is the model shorter than curdsec
-		int min_nrows = 
+//		int min_nrows = 
 		for(int i=0; i<cur_dsec_ordered.SECmatrix.size(); i++)
 		{
 			int res_ind = max_row_similarity_index(modeldsec.SECmatrix.get(i), cur_dsec_ordered.SECmatrix.get(i));
